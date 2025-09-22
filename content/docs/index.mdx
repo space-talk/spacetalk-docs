@@ -1,13 +1,50 @@
 ---
-title: Hello World
-description: Your first document
+title: SpaceTalk Documentation
+description: Comprehensive documentation for space situational awareness, orbital data formats, and APIs
 ---
 
-Welcome to the docs! You can start writing documents in `/content/docs`.
+# SpaceTalk Documentation
 
-## What is Next?
+Welcome to the SpaceTalk documentation! This site provides comprehensive resources for space situational awareness, orbital data formats, and API integration.
+
+## Documentation Sections
 
 <Cards>
-  <Card title="Learn more about Next.js" href="https://nextjs.org/docs" />
-  <Card title="Learn more about Fumadocs" href="https://fumadocs.vercel.app" />
+  <Card
+    title="🛰️ Orbital Data Formats"
+    href="/docs/orbital-data"
+    description="CCSDS standards, TLE formats, and space data specifications"
+  />
+  <Card
+    title="🌐 SpaceTalk API"
+    href="/docs/api"
+    description="RESTful API for space object tracking and SST management"
+  />
 </Cards>
+
+## What's Included
+
+### Orbital Data Formats
+- **CCSDS Standards**: OCM, OEM format specifications and validation
+- **TLE Format**: Two-Line Element parsing, validation, and examples
+- **Implementation Guides**: Best practices for orbital data handling
+- **Reference Data**: Enumerations, formats, and units
+
+### SpaceTalk API
+- **Interactive Documentation**: Auto-generated from OpenAPI specifications
+- **Authentication**: JWT-based security implementation
+- **Endpoints**: Complete API reference with examples
+- **Data Models**: Request/response schemas and validation
+
+## Getting Started
+
+1. **For Orbital Data**: Start with [Orbital Data Overview](/docs/orbital-data)
+2. **For API Integration**: Begin with [API Authentication](/docs/api/authentication/auth/login/post)
+3. **For Format Specifications**: Check [CCSDS OCM](/docs/orbital-data/ccsds/ocm) or [TLE Format](/docs/orbital-data/tle)
+
+## Quick Links
+
+- [API Overview](/docs/api) - RESTful API documentation
+- [TLE Parsing](/docs/orbital-data/tle/parsing-validation) - Two-Line Element validation
+- [CCSDS OCM](/docs/orbital-data/ccsds/ocm) - Orbit Comprehensive Message format
+- [CCSDS OEM](/docs/orbital-data/ccsds/oem) - Orbit Ephemeris Message format

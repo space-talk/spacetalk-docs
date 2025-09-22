@@ -1,0 +1,99 @@
+---
+title: SpaceTalk API
+description: RESTful API for space situational awareness and space object tracking
+---
+
+# SpaceTalk API
+
+The SpaceTalk API provides RESTful endpoints for managing space situational tracking (SST) events, space objects, users, and related data.
+
+## Base URL
+
+```
+https://api.spacetalk.com
+```
+
+## Authentication
+
+All API endpoints require authentication using JWT (JSON Web Tokens). Include your token in the Authorization header:
+
+```http
+Authorization: Bearer your_jwt_token_here
+```
+
+## API Sections
+
+### 🛰️ Space Situational Tracking (SSTs)
+- **GET /ssts** - List SST events
+- **POST /ssts** - Create new SST events
+- **GET /ssts/`{id}`** - Get specific SST event
+- **PUT /ssts/`{id}`** - Update SST event
+- **DELETE /ssts/`{id}`** - Delete SST event
+- **GET /ssts/export** - Export SST data
+
+### 🌌 Space Objects
+- **GET /spaceObjects** - List space objects
+- **GET /spaceObjects/`{id}`** - Get specific space object
+
+### 👥 Users
+- **GET /users** - List users (admin only)
+- **GET /users/me** - Get current user profile
+
+### 🔐 Authentication
+- **POST /auth/login** - Authenticate and get JWT token
+
+### 📊 System
+- **GET /status** - API health check
+
+## Data Types
+
+### SST Event Types
+- **trajectory** - Orbital trajectory updates
+- **status** - Operational status changes
+- **operation** - Operational activities
+
+### Orbit Categories
+- **LEO** - Low Earth Orbit
+- **MEO** - Medium Earth Orbit
+- **GEO** - Geostationary Orbit
+- **HEO** - High Earth Orbit
+- **LUNAR** - Lunar orbit
+- **INTERPLANETARY** - Interplanetary trajectory
+
+### Object Types
+- **payload** - Active spacecraft/satellite
+- **rocket_body** - Launch vehicle stage
+- **debris** - Space debris
+- **unknown** - Unknown object type
+
+## Error Handling
+
+The API uses standard HTTP status codes:
+
+- **200** - Success
+- **201** - Created successfully
+- **400** - Bad request (validation errors)
+- **401** - Unauthorized (authentication required)
+- **403** - Forbidden (insufficient permissions)
+- **404** - Resource not found
+- **500** - Internal server error
+
+Error responses include a JSON object with error details:
+
+```json
+{
+  "error": "Error description",
+  "code": "ERROR_CODE",
+  "details": {}
+}
+```
+
+## Rate Limiting
+
+API requests are subject to rate limiting to ensure fair usage and system stability.
+
+## Need Help?
+
+- 📧 Contact: api@spacetalk.com
+- 📖 Full endpoint documentation is available in the sections below
+- 🐛 Report issues via your support channel
