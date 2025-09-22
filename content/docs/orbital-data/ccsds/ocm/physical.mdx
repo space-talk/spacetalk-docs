@@ -1,0 +1,89 @@
+---
+title: Space Object Physical Characteristics
+description: Full field dictionary for OCM Space Object Physical Characteristics (CCSDS 502.0-B-3, §6.2.6; Table 6‑5)
+outline: deep
+---
+
+
+# Space Object Physical Characteristics
+
+## Purpose and scope
+This optional block describes mass properties, dimensions, cross‑section areas for drag/SRP, radar/optical observables, attitude-control descriptors, and inertia. It supports perturbation modeling and collision-probability estimation. At most one PHYS block may appear in an OCM.
+
+## Block keywords and order
+Delimited by:
+- PHYS_START (line by itself)
+- PHYS_STOP (line by itself)
+
+Within the block, KVN keys shall appear in the fixed order below.
+
+## Fields
+
+| Field | Req | Type | Format/Enum | Units | Default | Description | Example | Notes |
+|-------|-----|------|-------------|-------|---------|-------------|---------|-------|
+| PHYS_START | Mandatory | delimiter | literal | n/a | n/a | Start of Space Object Physical Characteristics section. | PHYS_START |  |
+| COMMENT | Optional | text | comment | n/a | None | Comments immediately after PHYS_START. | COMMENT Spacecraft physical characteristics |  |
+| MANUFACTURER | Optional | text | free text | n/a | None | Manufacturer name. | BOEING |  |
+| BUS_MODEL | Optional | text | free text | n/a | None | Spacecraft bus model. | 702 |  |
+| DOCKED_WITH | Optional | list | comma-delimited names | n/a | None | Names of objects docked to this object. | ISS |  |
+| DRAG_CONST_AREA | Optional | real | scalar | m**2 | None | Attitude-independent drag cross-section not already counted in AREA_ALONG_OEB_* parameters. | 2.5 |  |
+| DRAG_COEFF_NOM | Optional | real | scalar | n/a | None | Nominal drag coefficient CD. | 2.2 | If CD=0, ignore drag. |
+| DRAG_UNCERTAINTY | Optional | real | percent | % | None | 1‑σ percent uncertainty on CD. | 10.0 | Intended for ballistic-coefficient uncertainty scaling. |
+| INITIAL_WET_MASS | Optional | real | scalar | kg | None | Total mass at beginning of life. | 500 |  |
+| WET_MASS | Optional | real | scalar | kg | None | Total mass at EPOCH_TZERO (includes propellant). | 472.3 |  |
+| DRY_MASS | Optional | real | scalar | kg | None | Dry mass (no propellant). | 300 |  |
+| OEB_PARENT_FRAME | Conditional | enum | /refs/enums-formats-units#frames and #spacecraft-body-frames | n/a | None | Parent frame used to define orientation of the Optimally Encompassing Box (OEB). Required if any OEB_Q* fields are supplied. | RSW_ROTATING |  |
+| OEB_PARENT_FRAME_EPOCH | Conditional | time | CCSDS A/B | n/a | EPOCH_TZERO | Epoch of OEB parent frame if not intrinsic. | 2001-11-06T11:17:33Z |  |
+| OEB_Q1 | Optional | real | scalar | n/a | None | Quaternion q1 mapping from OEB_PARENT_FRAME to OEB; −999 denotes tumbling. | −0.575131822 | See Annex F for OEB definition and quaternion-to-matrix. |
+| OEB_Q2 | Optional | real | scalar | n/a | None | Quaternion q2; −999 denotes tumbling. | −0.280510532 |  |
+| OEB_Q3 | Optional | real | scalar | n/a | None | Quaternion q3; −999 denotes tumbling. | −0.195634856 |  |
+| OEB_QC | Optional | real | scalar | n/a | None | Quaternion qc (cos φ/2); non‑negative by convention; −999 denotes tumbling. | 0.743144825 |  |
+| OEB_MAX | Optional | real | scalar | m | None | Maximum physical dimension along OEB x-axis. | 2.0 |  |
+| OEB_INT | Optional | real | scalar | m | None | Intermediate dimension along OEB y-axis. | 1.0 |  |
+| OEB_MIN | Optional | real | scalar | m | None | Minimum dimension along OEB z-axis. | 0.5 |  |
+| AREA_ALONG_OEB_MAX | Optional | real | scalar | m**2 | None | Attitude-dependent cross-section when viewed along OEB x. | 0.15 | Used with INT/MIN to model area vs. aspect. |
+| AREA_ALONG_OEB_INT | Optional | real | scalar | m**2 | None | Attitude-dependent cross-section when viewed along OEB y. | 0.3 |  |
+| AREA_ALONG_OEB_MIN | Optional | real | scalar | m**2 | None | Attitude-dependent cross-section when viewed along OEB z. | 0.5 |  |
+| AREA_MIN_FOR_PC | Optional | real | scalar | m**2 | None | Minimum cross-section for collision-probability estimation. | 1.0 |  |
+| AREA_MAX_FOR_PC | Optional | real | scalar | m**2 | None | Maximum cross-section for collision-probability estimation. | 1.0 |  |
+| AREA_TYP_FOR_PC | Optional | real | scalar | m**2 | None | Typical (median) cross-section for collision probability. | 1.0 |  |
+| RCS | Optional | real | scalar | m**2 | None | Typical (median) effective radar cross section. | 1.25 |  |
+| RCS_MIN | Optional | real | scalar | m**2 | None | Minimum observed RCS. | 1.1 |  |
+| RCS_MAX | Optional | real | scalar | m**2 | None | Maximum observed RCS. | 2.5 |  |
+| SRP_CONST_AREA | Optional | real | scalar | m**2 | None | Attitude-independent SRP cross-section (e.g., sun-pointed arrays). | 1.0 |  |
+| SOLAR_RAD_COEFF | Optional | real | scalar | n/a | None | SRP coefficient CR. | 1.7 | If CR=0, ignore SRP. |
+| SOLAR_RAD_UNCERTAINTY | Optional | real | percent | % | None | 1‑σ percent uncertainty on SRP coefficient. | 1.0 |  |
+| VM_ABSOLUTE | Optional | real | scalar | n/a | None | Typical absolute visual magnitude under normalized geometry (Annex F). | 15.0 |  |
+| VM_APPARENT_MIN | Optional | real | scalar | n/a | None | Minimum apparent visual magnitude observed (brightest). | 16.0 |  |
+| VM_APPARENT | Optional | real | scalar | n/a | None | Typical apparent visual magnitude observed. | 15.0 |  |
+| VM_APPARENT_MAX | Optional | real | scalar | n/a | None | Maximum apparent visual magnitude observed (dimmest). | 19.0 |  |
+| REFLECTANCE | Optional | real | scalar (0–1) | n/a | None | Typical reflectance coefficient. | 0.7 |  |
+| ATT_CONTROL_MODE | Optional | text | free text (e.g., THREE_AXIS, SPIN, DUAL_SPIN, TUMBLING, GRAVITY_GRADIENT) | n/a | None | Primary attitude-control mode. | SPIN |  |
+| ATT_ACTUATOR_TYPE | Optional | text | free text (e.g., ATT_THRUSTERS, REACTION_WHEELS, ACTIVE_MAG_TORQUE, etc.) | n/a | None | Actuator type(s) for ACS. | ATT_THRUSTERS |  |
+| ATT_KNOWLEDGE | Optional | real | scalar | deg | None | Attitude-knowledge accuracy (1‑σ). | 0.3 |  |
+| ATT_CONTROL | Optional | real | scalar | deg | None | Control ability (deadband), assuming perfect knowledge. | 2.0 |  |
+| ATT_POINTING | Optional | real | scalar | deg | None | Combined pointing accuracy including knowledge/control. | 2.3 |  |
+| AVG_MANEUVER_FREQ | Optional | real | scalar | #/yr | None | Average maneuver frequency (orbit/attitude adjustments). | 20.0 |  |
+| MAX_THRUST | Optional | real | scalar | N | None | Maximum composite thrust achievable in any body-fixed direction. | 1.0 |  |
+| DV_BOL | Optional | real | scalar | km/s | None | Total ΔV at beginning of life. | 1.0 |  |
+| DV_REMAINING | Optional | real | scalar | km/s | None | Remaining ΔV. | 0.2 |  |
+| IXX | Optional | real | scalar | kg*m**2 | None | Moment of inertia about body X. | 1000.0 | Define body frame via mission ICD if needed. |
+| IYY | Optional | real | scalar | kg*m**2 | None | Moment of inertia about body Y. | 800.0 |  |
+| IZZ | Optional | real | scalar | kg*m**2 | None | Moment of inertia about body Z. | 400.0 |  |
+| IXY | Optional | real | scalar | kg*m**2 | None | Cross product inertia XY. | 20.0 |  |
+| IXZ | Optional | real | scalar | kg*m**2 | None | Cross product inertia XZ. | 40.0 |  |
+| IYZ | Optional | real | scalar | kg*m**2 | None | Cross product inertia YZ. | 60.0 |  |
+| PHYS_STOP | Mandatory | delimiter | literal | n/a | n/a | End of the Space Object Physical Characteristics section. | PHYS_STOP |  |
+
+## Validation and constraints
+
+- Only one PHYS block per OCM.
+- If any OEB_Q* is present, OEB_PARENT_FRAME must be supplied (and epoch if required).
+- Quaternion values of −999 denote tumbling; treat OEB orientation as undefined in that case.
+- If CR or CD is provided as 0, ignore the corresponding non-gravitational force in modeling (per standard guidance).
+
+## Cross-references
+
+- OEB geometry and quaternion mapping → Annex F (standard)
+- Frames → /refs/enums-formats-units
+- Perturbations block complements these parameters for modeling (see /ocm/structure)

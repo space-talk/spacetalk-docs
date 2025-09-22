@@ -1,0 +1,169 @@
+---
+title: Enumerations, formats, and units
+description: Centralized reference for enumerations, time and numeric formats, and unit guidance used by OCM (CCSDS 502.0-B-3)
+outline: deep
+---
+
+# Enumerations, formats, and units
+
+This page centralizes the enumerations and formats referenced throughout the OCM documentation. Use SANA registries as the authoritative source for canonical values.
+
+Links to SANA registries:
+- Navigation Standard Normative Annexes: https://sanaregistry.org/r/navigation_standard_normative_annexes
+- Organizations: https://sanaregistry.org/r/organizations
+- Orbit centers: https://sanaregistry.org/r/orbit_centers
+- Time systems: https://sanaregistry.org/r/time_systems
+- Celestial body reference frames: https://sanaregistry.org/r/celestial_body_reference_frames
+- Orbit-relative reference frames: https://sanaregistry.org/r/orbit_relative_reference_frames
+- Spacecraft/body reference frames: https://sanaregistry.org/r/spacecraft_body_reference_frames
+- Orbital elements (TRAJ_TYPE): https://sanaregistry.org/r/orbital_elements
+- Covariance matrix types: https://sanaregistry.org/r/orbital_covariance_matrix_types
+- Atmosphere models: https://sanaregistry.org/r/atmosphere_models
+- Gravity models: https://sanaregistry.org/r/gravity_models
+- Object types: https://sanaregistry.org/r/object_types
+- Operational status: https://sanaregistry.org/r/operational_status
+- Orbit categories: https://sanaregistry.org/r/orbit_categories
+
+## Formats
+
+### Time formats
+
+- Absolute times: CCSDS Time Code Format A or B (UTC unless otherwise stated).
+  - Format A (Day-of-year): `YYYY-DDDThh:mm:ss[.d...]Z`
+  - Format B (Calendar): `YYYY-MM-DDThh:mm:ss[.d...]Z`
+  - Leap seconds permitted (`ss=60`).
+- CREATION_DATE is always UTC.
+- Relative times: seconds from EPOCH_TZERO (double precision).
+
+Regex examples:
+- Format A with optional fractional seconds: `^(\d{4})-(\d{3})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?Z$`
+- Format B with optional fractional seconds: `^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?Z$`
+
+### Numeric formats
+
+- Integers: optional sign; 32‑bit signed range; no embedded blanks.
+- Non-integers: fixed or scientific notation (`E`/`e`), up to 16 significant digits total.
+- Recommended to limit mantissas to 16 digits to avoid round‑trip loss.
+
+### KVN lines
+
+- `KEY = VALUE` with uppercase keys.
+- One assignment per line.
+- Section delimiters: `*_START`/`*_STOP` lines on their own.
+- Multipartite data lines for trajectory, covariance, maneuver: whitespace-separated values; no unit strings inline.
+
+### Vectors
+
+- Space-delimited triples (e.g., `1.0 0.0 0.0`) with dimension defined by the field.
+
+## Enumerations (canonical values)
+
+Note: always prefer the SANA registry for the up-to-date canonical set.
+
+### TIME_SYSTEM values
+
+Common values include: UTC, TAI, TT, TDB, TCB, TCG, GPS, UT1, GMST, MET, MRT, SCLK. See SANA Time Systems.
+
+Used by: TIME_SYSTEM (metadata).
+
+### Centers (CENTER_NAME / N_BODY_PERTURBATIONS)
+
+Use SANA Orbit Centers (e.g., EARTH, MOON, SUN, MARS, JUPITER, SOLAR SYSTEM BARYCENTER, planet barycenters, named small bodies as registered; non-gravitational origins may be agreed for relative frames).
+
+Used by: CENTER_NAME in trajectory, GRAV_ASSIST_NAME, SHADOW_BODIES, N_BODY_PERTURBATIONS.
+
+### Frames
+
+- Celestial body frames (e.g., ICRF, ICRF3, EME2000/J2000, ITRFyyyy): SANA Celestial Body Reference Frames.
+- Orbit-relative frames (e.g., RTN, TNW, RSW, *_INERTIAL, *_ROTATING): SANA Orbit-Relative Reference Frames.
+- Spacecraft/body frames (e.g., SC_BODY_1, SENSOR_1, ACTUATOR_1): SANA Spacecraft Body Reference Frames.
+
+Used by: TRAJ_REF_FRAME, COV_REF_FRAME, MAN_REF_FRAME, OEB_PARENT_FRAME.
+
+### TRAJ_TYPE values
+
+Defined in SANA Orbital Elements (e.g., CARTP, CARTPV, CARTPVA, KEPLERIAN, GEODETIC, spherical variants). Each dictates the number and order of elements following the time tag.
+
+Used by: TRAJ_TYPE, COV_TYPE (when covariance expressed in an element set).
+
+### ORB_AVERAGING values
+
+Examples: OSCULATING (default), BROUWER, KOZAI, and other mean-element theories as registered/agreed.
+
+Used by: ORB_AVERAGING in trajectory when elements are orbital (not Cartesian/spherical).
+
+### OBJECT_TYPE values
+
+Examples: PAYLOAD, ROCKET_BODY, DEBRIS, UNKNOWN, OTHER.
+
+Used by: OBJECT_TYPE in metadata.
+
+### OPS_STATUS values
+
+Examples: OPERATIONAL, NONOPERATIONAL, DECOMMISSIONED (per SANA registry).
+
+Used by: OPS_STATUS in metadata.
+
+### ORBIT_CATEGORY values
+
+Examples: LEO, MEO, GEO, HEO, LUNAR, INTERPLANETARY.
+
+Used by: ORBIT_CATEGORY in metadata.
+
+### Covariance types and ordering
+
+- COV_TYPE: names from SANA (e.g., CARTP, CARTPV, CARTPVA; ADBARV; event-based SIG3EIGVEC3, TSIG3EIGVEC3).
+- COV_ORDERING: LTM, UTM, FULL, LTMWCC, UTMWCC.
+
+Used by: covariance blocks.
+
+### Interpolation
+
+- INTERPOLATION (trajectory): HERMITE, LINEAR, LAGRANGE, PROPAGATE.
+- INTERPOLATION_DEGREE: integer ≥ 1 where applicable.
+
+### Maneuver/DC enumerations
+
+- DC_TYPE: CONTINUOUS, TIME, TIME_AND_ANGLE.
+- THR_INTERP / ACC_INTERP: ON, OFF.
+
+### Perturbations enumerations
+
+- ATMOSPHERIC_MODEL: MSISE90, NRLMSIS00, J70, J71, JROBERTS, DTM, JB2008, etc. (SANA).
+- GRAVITY_MODEL: names per SANA; specify degree/order “: D O”.
+- SHADOW_MODEL: NONE, CYLINDRICAL, CONE, DUAL_CONE.
+
+## Units
+
+### Core SI units (OCM)
+
+- Length: m, km
+- Time: s, d
+- Angle: deg
+- Velocity: km/s
+- Acceleration: km/s**2
+- Area: m**2, km**2
+- Volume/GM: km**3/s**2
+- Force: N
+- Inertia: kg*m**2
+- Percent: %
+
+### Composite and covariance units
+
+- Position covariance: km**2
+- Cross covariance (pos–vel): km**2/s
+- Velocity covariance: km**2/s**2
+
+### Units in OCM
+
+- No units inline on multipartite data lines.
+- Use *_UNITS fields (TRAJ_UNITS, COV_UNITS, MAN_UNITS) for informational units lists.
+- For KVN scalars, optional bracketed units may be shown for documentation (e.g., `WET_MASS = 100.0 [kg]`); XML can use a `units="..."` attribute on scalar elements.
+
+---
+
+Cross-links:
+- Common syntax → /ocm/common-syntax
+- Structure and block dictionaries → /ocm/structure
+
+

@@ -1,0 +1,77 @@
+---
+title: Trajectory State Time History
+description: Full field dictionary for OCM trajectory sections (CCSDS 502.0-B-3, §6.2.5; Table 6‑4)
+outline: deep
+---
+
+
+# Trajectory State Time History
+
+## Purpose and scope
+A trajectory block provides a time history (ephemeris) or single snapshot of orbit state using a specified element set (Cartesian and/or orbital elements). Multiple blocks may appear, for different centers, frames, element-set types, or time spans.
+
+## Block keywords and order
+
+Delimited by:
+- TRAJ_START (line by itself)
+- TRAJ_STOP (line by itself)
+
+Within the block, metadata KVN keys shall appear first in the order below, followed by one or more non-KVN data lines, then TRAJ_STOP.
+
+## Fields
+
+| Field | Requirement | Type | Format/Enum | Units | Default | Description | Example | Notes |
+|-------|-------------|------|-------------|-------|---------|-------------|---------|-------|
+| TRAJ_START | Mandatory | delimiter | literal | n/a | n/a | Start of a trajectory section. | TRAJ_START | On its own line. |
+| COMMENT | Optional | text | comment | n/a | None | Comments immediately after TRAJ_START. | COMMENT Geocentric, Cartesian |  |
+| TRAJ_ID | Optional | text | free text | n/a | None | Identifier for this trajectory block. | TRAJ_20160402_XYZ |  |
+| TRAJ_PREV_ID | Optional | text | free text | n/a | None | ID of previous trajectory in a sequence. | ORB20160305A | Omit if not applicable. |
+| TRAJ_NEXT_ID | Optional | text | free text | n/a | None | ID of next trajectory in a sequence. | ORB20160432C | Omit if not applicable. |
+| TRAJ_BASIS | Optional | enum/text | PREDICTED, DETERMINED, TELEMETRY, SIMULATED, OTHER | n/a | None | Basis of the data. | PREDICTED | Descriptive. |
+| TRAJ_BASIS_ID | Optional | text | free text | n/a | None | Basis identifier (e.g., OD_ID, nav solution, sim run). | OD_5910 | When present and matched with OD section, IDs should correspond. |
+| INTERPOLATION | Optional | enum | HERMITE, LINEAR, LAGRANGE, PROPAGATE | n/a | None | Recommended interpolation method within this block. | HERMITE | PROPAGATE indicates prefer propagation over interpolation. |
+| INTERPOLATION_DEGREE | Conditional | integer | positive integer | n/a | 3 | Required if INTERPOLATION is present and not PROPAGATE. | 5 |  |
+| PROPAGATOR | Optional | text | free text | n/a | None | Name of propagator used to create the trajectory. | HPOP | Informational. |
+| CENTER_NAME | Mandatory | enum/text | /refs/enums-formats-units#centers | n/a | None | Origin of the reference frame (natural body or other origin). | EARTH | For non-gravitational origins, limit TRAJ_TYPE to Cartesian or spherical sets. |
+| TRAJ_REF_FRAME | Mandatory | enum | /refs/enums-formats-units#frames | n/a | None | Reference frame of the data. | ICRF3 |  |
+| TRAJ_FRAME_EPOCH | Conditional | time | CCSDS A/B | n/a | EPOCH_TZERO | Epoch of the frame if not intrinsic. | 2001-11-06T11:17:33Z | Provide when required by the frame definition. |
+| USEABLE_START_TIME | Optional | time | CCSDS A/B | n/a | None | Start of useable subset (allows extra nodes for interpolation). | 1996-12-18T14:28:15.1172 | If omitted, assume all data valid. |
+| USEABLE_STOP_TIME | Optional | time | CCSDS A/B | n/a | None | Stop of useable subset. | 1996-277T07:22:54 | If omitted, assume all data valid. |
+| ORB_REVNUM | Optional | integer | scalar | n/a | None | Orbit revolution number for the first trajectory state. | 1500 | First ascending node after launch is rev 1. |
+| ORB_REVNUM_BASIS | Conditional | enum | '0' or '1' (basis definition) | n/a | None | Basis for rev counter; required if ORB_REVNUM given. | 0 | See standard for definition. |
+| TRAJ_TYPE | Mandatory | enum | /refs/enums-formats-units#traj-types | n/a | None | Element set of trajectory data lines (e.g., CARTP, CARTPV, CARTPVA, KEPLERIAN, etc.). | CARTPV | Determines number/order of elements per line. |
+| ORB_AVERAGING | Conditional | enum | /refs/enums-formats-units#orbit-averaging | n/a | OSCULATING | Required only for orbital element sets (not Cartesian/spherical). | BROUWER |  |
+| TRAJ_UNITS | Optional | list | informational units string | n/a | None | Human-readable units for elements following the time tag. | [km,km,km,km/s,km/s,km/s] | Does not override normative units. |
+| `\<trajectory data line\>` | Mandatory | data line | time + elements per TRAJ_TYPE | per element set | n/a | One or more lines: timetag (absolute or relative) followed by elements in fixed order. | 0.0 5000 -3000 1000 1.0 2.0 3.0 | No unit strings inline. All lines in a block must be time-consistent and strictly increasing. |
+| TRAJ_STOP | Mandatory | delimiter | literal | n/a | n/a | End of the trajectory section. | TRAJ_STOP | On its own line. |
+
+## Trajectory data-line rules
+
+- Time tag mode: choose either absolute (CCSDS A/B) or relative (seconds from EPOCH_TZERO) for all lines in the block; do not mix.
+- Monotonic: time tags must strictly increase; no duplicates.
+- Element count and ordering are determined by TRAJ_TYPE. See the SANA Orbital Elements registry for exact definitions and units.
+- For velocity discontinuities (impulses) or position gaps where interpolation must not cross, use separate trajectory blocks.
+
+## Interpolation guidance
+
+- Provide USEABLE_START_TIME/USEABLE_STOP_TIME as needed to include extra nodes (for higher-order interpolation) without declaring the entire interval as valid.
+- If INTERPOLATION = PROPAGATE, consuming systems should prefer propagation (midpoint/endpoint switching) rather than pure interpolation.
+
+## Special constraints
+
+- For non-gravitational centers (e.g., relative to another spacecraft), TRAJ_TYPE shall be limited to Cartesian or spherical element sets; frames may be inertial or rotating (standard §6.2.5.15).
+- Do not use TEME frames in OCM trajectory blocks (TEME is reserved for OMM/TLE workflows).
+
+## Validation checklist (block-level)
+
+- Required keys present: CENTER_NAME, TRAJ_REF_FRAME, TRAJ_TYPE.
+- Conditional keys satisfied (e.g., INTERPOLATION_DEGREE when needed; ORB_AVERAGING for element sets; ORB_REVNUM_BASIS when ORB_REVNUM present).
+- Time format valid; monotonic and non-duplicate timetags.
+- Element count per line matches TRAJ_TYPE; units implied by SANA registry.
+- If TRAJ_FRAME_EPOCH is required by the chosen frame and not intrinsic, it is present.
+
+## Cross-references
+
+- Frames, element sets, averaging → /refs/enums-formats-units
+- Global syntax and time rules → /ocm/common-syntax
+- Perturbations and OD linkage: TRAJ_BASIS_ID ↔ OD_ID (see /ocm/metadata and OD section in the standard).

@@ -1,0 +1,95 @@
+
+---
+title: OEM Structure and Ordering
+description: File layout, segments, block ordering, ephemeris and covariance rules for CCSDS OEM v3.0
+outline: deep
+---
+
+# OEM structure and parsing
+
+Defines the OEM file structure, block ordering, and the key constraints that parsers must enforce. Clauses reference CCSDS 502.0-B-3.
+
+## OEM Structure table
+
+| Item | Feature | Keyword | Reference | Status | M/O/C | Support |
+|------|---------|---------|-----------|--------|--------|----------|
+| 1 | OEM Header | N/A | [Table 5-2](header.md#fields) | M | M | Yes |
+| 2 | Metadata logical block | N/A | [Table 5-3](metadata.md#fields) | M | M | Yes |
+| 3 | Start of OEM Metadata | META_START | [Table 5-3](metadata.md#fields) | M | M | Yes |
+| 4 | Comment | COMMENT | [Table 5-3](metadata.md#fields) | O | O | Yes |
+| 5 | Name of space object | OBJECT_NAME | [Table 5-3](metadata.md#fields) | M | M | Yes |
+| ... | (full table truncated; see ICS A2.5.3 for complete) | ... | ... | ... | ... | ... |
+| 14 | Recommended interpolation degree | INTERPOLATION_DEGREE | [Table 5-3](metadata.md#fields) | C | O | Yes |
+| 15 | End of OEM Metadata | META_STOP | [Table 5-3](metadata.md#fields) | M | M | Yes |
+| 16 | OEM Ephemeris Data | N/A | 5.2.4 | M | M | Yes |
+| 17 | Start of covariance block | COVARIANCE_START | [Table 5-4](covariance.md#field-table-table-5-4-and-525) | O | O | Yes |
+| ... | Covariance items | ... | ... | ... | ... | ... |
+
+File layout and repetition ([Table 5-1](#oem-structure-table); 5.2.1–5.2.2)
+
+- Required sections in order:
+  1) Header
+  2) Metadata
+  3) Ephemeris Data
+- Optional per-segment: Covariance Matrix
+- Allowable repetitions: repeat "Metadata + Ephemeris Data + optional Covariance" any number of times after a single header.
+- One metadata group precedes each ephemeris block and is delimited by META_START and META_STOP (5.2.3.3).
+- Comments may appear only at the positions defined in Section 7.8; not inside blocks of ephemeris or covariance lines (7.8.9).
+
+Segment constraints (5.2.3; 5.2.4)
+
+- TIME_SYSTEM is fixed across the entire OEM (5.2.4.5).
+- START_TIME and STOP_TIME delimit the total time span for the immediately following ephemeris block (5.2.3, [Table 5-3](metadata.md#fields)).
+- USEABLE_START_TIME/USEABLE_STOP_TIME optionally tighten the interpolation window and allow fictitious nodes for higher-order schemes; they must not overlap between consecutive blocks except possibly at a shared endpoint (5.2.4.4; [Table 5-3](metadata.md#fields) notes).
+- Each segment must include START_TIME and STOP_TIME; START_TIME ≤ first ephemeris epoch; STOP_TIME ≥ last ephemeris epoch ([Table 5-3](metadata.md#fields)).
+
+Ephemeris data lines (5.2.4)
+
+- Structure per line: time + X Y Z X_DOT Y_DOT Z_DOT [+ X_DDOT Y_DDOT Z_DDOT] (5.2.4.1).
+- Required: position and velocity. Optional: full acceleration triplet; it is all-or-none (5.2.4.2).
+- Values are space-delimited; no keyword on data lines (5.2.4.3; 7.4.1.2).
+- Units are implicit (km, km/s, km/s²); do not display units in KVN (7.7.2).
+- At least two ephemeris lines are required per segment ([Table 5-1](#oem-structure-table)).
+- Epochs must be strictly increasing and unique within a segment (5.2.4.4).
+- Across segments, repeated boundary epochs are allowed for interpolation continuity when STOP_TIME of the first segment is greater than START_TIME of the next; but the USEABLE windows must not overlap except at endpoints (5.2.4.4).
+
+Covariance data (5.2.5; [Table 5-4](covariance.md#field-table-table-5-4-and-525))
+
+- Optional covariance section per ephemeris block, delimited by:
+  - COVARIANCE_START
+  - one or more covariance matrices, each preceded by EPOCH and optionally COV_REF_FRAME
+  - COVARIANCE_STOP
+- Matrix content is provided in 6×6 lower-triangular order, row by row (5.2.5.4).
+- Epochs of multiple matrices must be in strictly increasing order (5.2.5.7).
+- Reference frame: if different from REF_FRAME of the segment, declare via COV_REF_FRAME (5.2.5.3).
+- Units are implicit in KVN (km², km²/s, km²/s²) (7.7.2.2).
+
+Interpolation guidance (5.2.4.7)
+
+- If INTERPOLATION is provided, INTERPOLATION_DEGREE must be present and all segments must contain enough nodes to apply the recommended method consistently.
+- Typical methods: LINEAR, HERMITE, LAGRANGE.
+- Metadata USEABLE_* may be used to add fictitious nodes for higher-order schemes.
+
+Validation checklist (structural/semantic)
+
+- Header present and first line is CCSDS_OEM_VERS (7.3.6; [Table 5-2](header.md#fields)).
+- One or more segments, each: META_START … META_STOP, then ≥2 ephemeris lines, optional covariance block.
+- Keyword ordering matches [Table 5-3](metadata.md#fields) (7.4.8).
+- Epoch monotonicity and uniqueness within each segment; TIME_SYSTEM fixed for the entire file.
+- Units are not shown on KVN ephemeris or covariance lines.
+- Covariance matrices are lower-triangular and positive semidefinite; non-PSD matrices should be rejected or flagged (good practice; see 5.2.5.4 plus PSD guidance).
+- Line length ≤254 chars; printable ASCII only (7.3.1).
+
+Complete single-segment structure:
+
+```
+CCSDS_OEM_VERS = 3.0
+... header ...
+META_START
+... metadata ...
+META_STOP
+... ephemeris lines ...
+COVARIANCE_START
+... matrices ...
+COVARIANCE_STOP
+```

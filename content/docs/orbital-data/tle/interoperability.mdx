@@ -1,0 +1,220 @@
+---
+title: TLE Interoperability
+description: Guidelines for SGP4 integration, coordinate systems, and time systems
+outline: deep
+---
+
+# TLE Interoperability Guidelines
+
+## SGP4/SDP4 Integration
+
+### SGP4 Field Usage
+
+The Simplified General Perturbations 4 (SGP4) propagator uses only a subset of TLE fields:
+
+#### Required for SGP4:
+- **Epoch** (year/day → converted to minutes since epoch)
+- **Mean motion** (to derive semi-major axis)
+- **Eccentricity**
+- **Inclination**
+- **Right Ascension of Ascending Node (RAAN)**
+- **Argument of Perigee**
+- **Mean Anomaly**
+- **BSTAR** (drag coefficient)
+
+#### Ignored by SGP4:
+- **First derivative of mean motion** (parsed and stored, but not used)
+- **Second derivative of mean motion** (parsed and stored, but not used)
+- **Ephemeris type** (SGP4 assumes itself regardless of field value)
+- **Revolution number at epoch** (metadata only)
+- **Classification** (security metadata only)
+- **COSPAR designator** (identification only)
+- **Element set number** (versioning metadata only)
+
+### SGP4 Constants (WGS-72)
+
+**Critical**: SGP4 implementations must use WGS-72 constants for compatibility:
+
+```
+$\mu$ (gravitational parameter) = $3.986005 \times 10^{14} \text{ m}^3/\text{s}^2$
+Earth radius (Re) = $6378.135$ km
+$J_2 = 0.00108262998905$
+```
+
+**Warning**: Using WGS-84 constants introduces kilometer-level position errors compared to reference implementations.
+
+### Semi-major Axis Derivation
+
+Semi-major axis is computed from mean motion:
+
+```
+$a = \left(\frac{\mu}{(n \times 2\pi/86400)^2}\right)^{1/3}$
+```
+
+Where:
+- `a` = semi-major axis (meters)
+- `μ` = WGS-72 gravitational parameter
+- `n` = mean motion (revolutions per day)
+
+**Validation**: Flag TLEs where computed $a < 6478.135$ km (Earth radius $+ 100$ km) as likely decayed objects.
+
+## Coordinate Systems
+
+### TEME Frame
+
+TLE orbital elements are expressed in the **True Equator, Mean Equinox (TEME)** coordinate system:
+
+- **True Equator**: Uses the actual (nutated) equatorial plane at the epoch
+- **Mean Equinox**: Uses the mean equinox position (without short-period nutation)
+- **Epoch-specific**: TEME frame is tied to the TLE epoch date
+
+### TEME Characteristics
+
+1. **Reference**: Earth's true equator and mean equinox at TLE epoch
+2. **Rotation**: Rotates with Earth (co-rotating frame)
+3. **Time-dependent**: Frame orientation changes with epoch
+4. **SGP4 Native**: SGP4 propagates directly in TEME
+
+### Coordinate Transformations
+
+#### TEME to Earth-Fixed Frames
+
+To convert TEME coordinates to Earth-fixed frames (PEF, ITRF):
+
+1. **Compute Greenwich Mean Sidereal Time (GMST)**
+2. **Apply rotation**: TEME → PEF via rotation about Z-axis by GMST
+3. **Further transformations**: PEF → ITRF via polar motion (if needed)
+
+#### GMST Computation
+
+```
+$\text{GMST} = \text{GMST}_0 + \omega_e \times (t - t_0)$
+```
+
+Where:
+- `GMST₀` = GMST at reference epoch
+- `ωₑ` = Earth's rotation rate
+- `t` = current time
+- `t₀` = reference time
+
+**Note**: Detailed GMST computation should follow IAU standards for precision applications.
+
+## Time System Considerations
+
+### TLE Time System
+
+- **Epoch representation**: UTC (Coordinated Universal Time) in practice
+- **Parsing assumption**: Treat epoch as UTC for most applications
+- **Precision**: Fractional day to 8 decimal places (≈0.864 ms precision)
+
+### UT1 vs UTC for GMST
+
+**Preferred**: Use UT1 (Universal Time 1) for GMST computation in coordinate transformations
+
+**Practical**: UTC approximation introduces small errors ($< 1$ arcsecond in Earth orientation)
+
+**Difference**: UT1 - UTC varies $\pm 0.9$ seconds, maintained by IERS bulletins
+
+### Leap Second Handling
+
+- **TLE epochs**: No leap second adjustments in epoch parsing
+- **SGP4 propagation**: Uses continuous time (minutes since epoch)
+- **Time spans**: Leap seconds don't affect SGP4 internal calculations
+- **External interfaces**: Consider leap seconds for UTC time conversions
+
+## Precision Requirements
+
+### Numerical Precision
+
+**Critical**: Preserve all digits from TLE during parsing and computation
+
+- **Epoch**: Full 8-decimal precision for fractional day
+- **Angular elements**: Full precision as provided
+- **Mean motion**: All 8 decimal places significant
+- **BSTAR**: Full exponent notation precision
+
+**Impact**: Rounding during parsing introduces kilometer-level position errors over time.
+
+### Propagation Accuracy
+
+**Expected accuracy** (per Vallado Rev 2):
+- **At epoch**: Sub-kilometer accuracy for well-determined orbits
+- **Short-term** (few days): Kilometer-level accuracy
+- **Long-term**: Accuracy degrades due to modeling limitations
+
+## Implementation Best Practices
+
+### SGP4 Integration Checklist
+
+1. **Use WGS-72 constants** (not WGS-84)
+2. **Preserve numerical precision** throughout parsing
+3. **Handle epoch conversion** to minutes since epoch correctly
+4. **Validate orbital parameters** before propagation
+5. **Implement both SGP4 and SDP4** variants for different orbit regimes
+
+### Coordinate System Guidelines
+
+1. **Document frame assumptions** clearly in APIs
+2. **Provide transformation utilities** between common frames
+3. **Use appropriate time systems** (UT1 for GMST when available)
+4. **Handle frame epoch dependencies** correctly
+
+### Time System Recommendations
+
+1. **Parse epochs as UTC** unless explicitly specified otherwise
+2. **Provide UT1 conversion** for precise applications
+3. **Document time system assumptions** in interfaces
+4. **Handle leap seconds** appropriately in time arithmetic
+
+## Quality Indicators
+
+### Orbital Parameter Sanity Checks
+
+Implement validation for:
+
+1. **Physical constraints**:
+   - Eccentricity $< 1.0$
+   - Inclination [0°, 180°]
+   - Mean motion $> 0$
+
+2. **Derived parameters**:
+   - Semi-major axis $>$ Earth radius
+   - Apogee/perigee altitudes reasonable
+
+3. **Consistency checks**:
+   - Epoch within reasonable historical range
+   - BSTAR magnitude appropriate for orbit type
+
+### Propagation Quality Assessment
+
+Monitor for:
+
+1. **Rapid orbital decay** (high BSTAR, low perigee)
+2. **Deep space orbits** (low mean motion)
+3. **Critical inclination effects** (near 63.4°, 116.6°)
+4. **Resonance effects** (geosynchronous, sun-synchronous)
+
+## Interoperability Standards
+
+### Data Exchange
+
+1. **Preserve original TLE format** for maximum compatibility
+2. **Validate checksums** but allow lenient parsing
+3. **Document parsing assumptions** and limitations
+4. **Provide standardized error reporting**
+
+### API Design
+
+1. **Separate parsing from propagation** functionality
+2. **Support both strict and lenient** parsing modes
+3. **Provide coordinate transformation** utilities
+4. **Include quality metrics** and validation results
+
+### Testing and Validation
+
+1. **Use standard test vectors** from Vallado Rev 2
+2. **Cross-validate** against reference implementations
+3. **Test edge cases** systematically
+4. **Monitor real-world performance** against tracking data
+
+This interoperability guide ensures TLE implementations work correctly with SGP4 propagators and maintain compatibility across different systems and applications.

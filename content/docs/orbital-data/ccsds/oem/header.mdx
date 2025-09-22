@@ -1,0 +1,74 @@
+---
+title: OEM Header
+description: Field dictionary for the OEM Header (CCSDS 502.0-B-3, Table 5-2)
+outline: deep
+---
+
+## Purpose and scope
+
+OEM header item defined in Table 5-2 of CCSDS 502.0-B-3 with data types, formats, defaults, constraints, examples, and normative cross-references. The header is mandatory and must be the first section of an OEM. It provides message-level metadata applicable to the entire file.
+
+## Block keywords and order
+
+- The OEM header is a series of KVN assignments in fixed order (7.4.8).
+- The first non-blank line of the file shall be CCSDS_OEM_VERS (7.3.6; 5.2.2.2).
+- Comments in the header are allowed only immediately after CCSDS_OEM_VERS (7.8.9).
+- Header ends implicitly before the first META_START; no explicit delimiter.
+
+| Keyword | Description | Examples of Values | M/O/C |
+|---------|-------------|--------------------|---------|
+| CCSDS_OEM_VERS | OEM format version identifier; must be first line of the file | 3.0 | M |
+| COMMENT | Comments (a contiguous set of one or more COMMENT statements) | This is a comment | O |
+| CLASSIFICATION | Classification of the message | U | O |
+| CREATION_DATE | Creation date/time of the OEM file in UTC | 2002-204T15:56:23 | M |
+| ORIGINATOR | Name of the originator of the OEM file | GSFC | M |
+| MESSAGE_ID | Unique message identifier | OEM 201113719185 | O |
+
+## Fields
+
+| Keyword | Requirement | Type | Format / Allowed values | Units | Default | Description | Constraints and validation | Cross-reference | Example |
+|---------|-------------|------|-------------------------|-------|---------|-------------|---------------------------|--------------------|---------|
+| CCSDS_OEM_VERS | Mandatory | text (version string) | Floating "x.y"; allowed value for this Blue Book: 3.0 | Forbidden | None | Format version identifier; must be first line of the file | Must be first non-blank line; exact token '3.0' for this spec. Reject if ≠3.0. | 5.2.2; 7.3.6 | CCSDS_OEM_VERS = 3.0 |
+| COMMENT | Optional | free text | Per KVN; any printable ASCII after 'COMMENT ' | n/a | None | Additional explanatory information | Only immediately after CCSDS_OEM_VERS; may repeat. Max line length 254 chars (7.3.1). | 7.8.9 | COMMENT This is a comment |
+| CLASSIFICATION | Optional | free text | User-defined message caveats/classification | n/a | None | Implementation-defined classification note | Optional; agencies may pre-coordinate values (e.g., U=Unclassified, SBU=Sensitive But Unclassified). | Table 5-2; 7.8 | CLASSIFICATION = SBU |
+| CREATION_DATE | Mandatory | time string | CCSDS Time Code A/B; UTC only | Forbidden | None | File creation date/time in UTC | Must parse per 7.5.10; always in UTC regardless of TIME_SYSTEM. Leap seconds (ss=60) allowed. | Table 5-2; 7.5.10–7.5.11 | CREATION_DATE = 2002-204T15:56:23Z |
+| ORIGINATOR | Mandatory | text | Value from SANA Organizations registry when available; otherwise agency/operator name | n/a | None | Creating agency or operator | Prefer SANA "organizations" values; free-text if not listed. Validate against SANA registry for interoperability. | Table 5-2; Annex B-B1 | ORIGINATOR = GSFC |
+| MESSAGE_ID | Optional | text | Free-text unique ID per originator | n/a | None | Originator-scoped unique message identifier | Format/content at originator's discretion. Useful for tracking in multi-message exchanges. | Table 5-2 | MESSAGE_ID = OEM 201113719185 |
+
+## Notes
+
+- Units are never shown in header KVN values (7.7).
+- CREATION_DATE time zone must be UTC even if TIME_SYSTEM in metadata is non-UTC (7.5.11).
+- Header support is mandatory (Item 1 in A2.5.3); all M fields required.
+
+## Header-specific validation rules
+
+- Enforce header keyword order as printed in [Table 5-2](#fields).
+- Reject files where CCSDS_OEM_VERS is missing, not the first non-blank line, or not equal to "3.0".
+- Ensure header comments appear only after CCSDS_OEM_VERS.
+- Validate CREATION_DATE against CCSDS Time Code A/B; enforce UTC.
+- Prefer ORIGINATOR values from SANA; log if not recognized.
+
+## Edge cases
+
+- Multiple COMMENT lines are allowed but only immediately after the version line.
+- CLASSIFICATION is not standardized by CCSDS; treat as free-text and propagate as-is.
+- MESSAGE_ID uniqueness is scoped to the originator; parsers should treat it as an opaque identifier.
+- No comments allowed elsewhere in header.
+
+## Cross-references
+
+- OEM content and header: 5.2; [Table 5-2](#fields)
+- KVN rules and ordering: 7.4; 7.3
+- Comments: 7.8
+- Time formats and systems: 7.5.10–7.5.11
+
+### Minimal header example:
+
+```
+CCSDS_OEM_VERS = 3.0
+COMMENT Example OEM Header
+CREATION_DATE = 1996-11-04T17:22:31
+ORIGINATOR = NASA/JPL
+MESSAGE_ID = OEM 201113719185
+```

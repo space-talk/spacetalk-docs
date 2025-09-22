@@ -1,0 +1,83 @@
+---
+title: Two-Line Element Set (TLE)
+description: Definitive specification for the Two-Line Element Set format used with SGP4 propagation
+outline: deep
+---
+
+The Two-Line Element Set (TLE) format is a compact, fixed-column textual representation of satellite orbital parameters, primarily used with the Simplified General Perturbations 4 (SGP4) propagator. Originating from U.S. Department of Defense (DoD) practices documented in SpaceTrack Report #3 (STR#3, 1980) and refined in Vallado et al.'s "Revisiting Spacetrack Report #3: Rev 2" (AIAA 2006-6753-Rev2, 2006), TLEs encode mean Keplerian elements in a "true equator, mean equinox" (TEME) frame, adjusted for perturbations like drag and resonances.
+
+## Executive Summary
+
+This documentation provides a normative (prescriptive) specification for parsing, validating, and handling TLEs, ensuring interoperability with SGP4 implementations. It aligns strictly with STR#3 and Vallado Rev 2, incorporating guidance on data parsing pitfalls (e.g., implied decimals, checksum ambiguities, missing fields), time systems (e.g., epoch handling, UT1 vs. UTC for GMST conversions), and coordinate nuances (e.g., TEME-of-date). Normative rules use "must" or "shall"; informative guidance uses "should" or "may".
+
+### Key Principles
+
+- TLEs are 69 characters per line (excluding newline), with fixed columns (1-based indexing)
+- Public TLEs use ephemeris type '0' and are compatible with SGP4 (derivatives are parsed but ignored by SGP4)
+- Parsers must handle historic quirks (e.g., blanks, zero-filled fields) leniently for robustness but offer strict modes
+- Validation includes checksum (mod-10, with '+'=0, '-'=1) and range checks; lenient mode accepts with warnings
+- Interoperability: Use WGS-72 constants for SGP4; convert TEME to PEF/ITRF via GMST (UT1 preferred, but UTC common in practice)
+
+This enables developers to build robust TLE readers/validators that feed SGP4 propagators, reproducing epoch states with kilometer-level accuracy as per Vallado Rev 2.
+
+## Documentation Structure
+
+This TLE specification is organized into the following sections:
+
+### [Format Specification](./format-specification.md)
+Detailed field-by-field specification of both lines, including:
+- Line 1: Satellite identification, classification, epoch, drag terms
+- Line 2: Orbital elements (inclination, RAAN, eccentricity, etc.)
+- Data types, column positions, implied decimals, and valid ranges
+
+### [Parsing and Validation](./parsing-validation.md)
+Comprehensive rules for parsing and validating TLE data:
+- Fixed-column parsing strategies
+- Checksum computation and verification
+- Field validation and range checking
+- Strict vs. lenient parsing modes
+
+### [Edge Cases](./edge-cases.md)
+Complete catalog of edge cases and required behaviors:
+- Missing or blank fields
+- Year rollover handling
+- Checksum failures
+- Invalid or boundary values
+
+### [Interoperability](./interoperability.md)
+Guidelines for SGP4 integration and coordinate systems:
+- SGP4-specific field usage and constants
+- TEME coordinate frame handling
+- Time system considerations (UT1 vs UTC)
+- Precision requirements
+
+### [Examples and Test Vectors](./examples.md)
+Worked examples and comprehensive test cases:
+- Clean LEO TLE examples
+- GEO satellite examples with edge cases
+- Problematic TLEs with parsing challenges
+- Expected outputs and validation results
+
+### [Implementation Guide](./implementation.md)
+Practical implementation guidance:
+- Reference algorithms in Python and C++
+- Checksum computation examples
+- Parser design patterns
+- Error handling strategies
+
+## Standards References
+
+- **SpaceTrack Report #3 (STR#3)**: Original DoD specification (1980)
+- **Vallado et al. "Revisiting Spacetrack Report #3: Rev 2"**: Updated specification (AIAA 2006-6753-Rev2, 2006)
+- **WGS-72**: World Geodetic System 1972 constants for SGP4 compatibility
+
+## Scope and Applications
+
+TLE format is used for:
+- Satellite tracking and orbital prediction
+- Two-line element distribution networks
+- Amateur radio satellite tracking
+- Space situational awareness
+- Educational and research applications
+
+The format is optimized for SGP4/SDP4 propagation models and maintains backward compatibility with historical data while supporting modern orbital mechanics applications.

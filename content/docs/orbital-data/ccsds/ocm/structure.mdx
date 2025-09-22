@@ -1,0 +1,173 @@
+---
+title: OCM file structure and parsing
+description: Block layout, ordering, repeatability, and high-level parsing flow for CCSDS OCM (CCSDS 502.0-B-3)
+outline: deep
+---
+
+# OCM structure and parsing
+
+## Top-level layout
+
+An OCM file consists of:
+- Header (mandatory)
+- Metadata block delimited by META_START / META_STOP (mandatory; only one)
+- Data sections (optional), in this fixed order when present:
+  1) One or more trajectory state time histories (TRAJ_START / TRAJ_STOP)
+  2) One space object physical characteristics section (PHYS_START / PHYS_STOP) — at most one
+  3) One or more covariance time histories (COV_START / COV_STOP)
+  4) One or more maneuver specifications (MAN_START / MAN_STOP)
+  5) One perturbations specification (PERT_START / PERT_STOP) — at most one
+  6) One orbit determination section (OD_START / OD_STOP) — at most one
+  7) One user-defined parameters section (USER_START / USER_STOP) — at most one
+
+Notes
+- The OCM supports a "degenerate" case with metadata only and no data sections.
+- Order is fixed; omit sections you do not use, but do not reorder.
+
+## Header
+
+- Mandatory keywords:
+  - CCSDS_OCM_VERS (e.g., 3.0)
+  - CREATION_DATE (UTC, CCSDS time format)
+  - ORIGINATOR (organization from SANA registry)
+- Optional:
+  - COMMENT lines (immediately after version)
+  - CLASSIFICATION
+  - MESSAGE_ID (unique within originator's context)
+
+## Metadata (single block)
+
+- Delimited by META_START / META_STOP.
+- Mandatory:
+  - TIME_SYSTEM
+  - EPOCH_TZERO (reference epoch for relative times)
+- Common optional content includes:
+  - OBJECT_NAME, INTERNATIONAL_DESIGNATOR, CATALOG_NAME, OBJECT_DESIGNATOR, ALTERNATE_NAMES
+  - Originator/technical POCs and contact fields
+  - Message linking: ADM_MSG_LINK, CDM_MSG_LINK, PRM_MSG_LINK, RDM_MSG_LINK, TDM_MSG_LINK
+  - OPERATOR, OWNER, COUNTRY, CONSTELLATION, OBJECT_TYPE
+  - OPS_STATUS, ORBIT_CATEGORY
+  - SCLK_* when TIME_SYSTEM = SCLK
+  - Previous/next message IDs and epochs
+  - START_TIME, STOP_TIME, TIME_SPAN
+  - Leap-second and EOP information (TAIMUTC_AT_TZERO, NEXT_LEAP_EPOCH, NEXT_LEAP_TAIMUTC, UT1MUTC_AT_TZERO, EOP_SOURCE, INTERP_METHOD_EOP)
+  - CELESTIAL_SOURCE
+  - OCM_DATA_ELEMENTS (a descriptive, comma-delimited list mirroring the actual data sections present)
+
+Parsing tips
+- Parse and store TIME_SYSTEM and EPOCH_TZERO before reading any data sections.
+- Enforce the presence of SCLK_OFFSET_AT_EPOCH and SCLK_SEC_PER_SI_SEC when TIME_SYSTEM is SCLK (EPOCH_TZERO interpreted in UTC for SCLK).
+
+## Trajectory state time history (repeatable)
+
+- Delimited by TRAJ_START / TRAJ_STOP.
+- Key metadata inside the section:
+  - CENTER_NAME (origin)
+  - TRAJ_REF_FRAME (reference frame) and optional TRAJ_FRAME_EPOCH
+  - TRAJ_TYPE (element set type, from SANA registry)
+  - Optional: TRAJ_BASIS / TRAJ_BASIS_ID, PROPAGATOR, INTERPOLATION[/_DEGREE], USEABLE_START_TIME/USEABLE_STOP_TIME, ORB_AVERAGING, ORB_REVNUM[/_BASIS], TRAJ_UNITS.
+- Data lines:
+  - Each line: time tag (absolute or relative) + elements in the order defined by TRAJ_TYPE.
+  - No unit tokens inline.
+  - All lines in a block must use the same time mode (absolute or relative), be strictly time-ordered, and contain no duplicate timetags.
+- Provide separate trajectory blocks for position or velocity discontinuities (e.g., impulsive maneuvers) or for interpolation-protected gaps.
+
+## Space-object physical characteristics (single)
+
+- Delimited by PHYS_START / PHYS_STOP.
+- Optional block carrying mass properties, OEB dimensions/quaternion, cross-sections for drag/SRP, attitude-control descriptors, RCS, visual magnitudes, moments of inertia, and ΔV capability.
+- If OEB quaternions OEB_Q1–Q3/QC are supplied, include OEB_PARENT_FRAME (and epoch if needed). "-999" in OEB quaternion fields denotes tumbling.
+
+## Covariance time history (repeatable)
+
+- Delimited by COV_START / COV_STOP.
+- Key metadata inside the section:
+  - COV_REF_FRAME (and optional frame epoch),
+  - COV_TYPE (element set or event-based type; SANA),
+  - COV_ORDERING (LTM, UTM, FULL, LTMWCC, UTMWCC),
+  - Optional: COV_BASIS/ID, COV_SCALE_MIN/MAX, COV_CONFIDENCE, COV_UNITS.
+- Data lines:
+  - Each line: time tag + covariance entries in the precise order dictated by COV_ORDERING and the matrix size from COV_TYPE.
+  - PSD requirement: supplied covariances shall be positive semi-definite.
+
+## Maneuver specification (repeatable)
+
+- Delimited by MAN_START / MAN_STOP.
+- Key metadata inside the section:
+  - MAN_ID (unique within message),
+  - MAN_DEVICE_ID (thruster, ALL, or DEPLOY),
+  - MAN_REF_FRAME (and optional epoch),
+  - MAN_BASIS[/_ID], optional purpose/source (MAN_PURPOSE, MAN_PRED_SOURCE),
+  - Duty-cycle control: DC_TYPE and associated DC_* parameters for TIME or TIME_AND_ANGLE modes.
+- MAN_COMPOSITION defines the ordered set of data-line elements (choose from propulsive fields in Table 6‑8 or deployment fields in Table 6‑9). Only one time tag mode appears in a composition (TIME_ABSOLUTE or TIME_RELATIVE).
+- Data lines:
+  - For impulses (DV_*), the ΔV is applied at `Tstart + 0.5*MAN_DURA`.
+  - Thrust/acceleration vectors can be interpolated between lines when THR_INTERP/ACC_INTERP = ON.
+
+## Perturbations specification (single)
+
+- Delimited by PERT_START / PERT_STOP.
+- Discloses atmosphere model, gravity model (with degree/order), body GM and radius if overridden, third-body list, body rotation and flattening, tides, reduction theory, SRP and shadow models, albedo and grid size, space weather sources and fixed indices.
+
+## Orbit determination data (single)
+
+- Delimited by OD_START / OD_STOP.
+- Identifies OD method and tool, OD epoch and spans, counts of observations/tracks, max gaps, confidence metrics (e.g., GDOP, RMS), solve/consider parameters, sensors list, and SEDR.
+
+## User-defined parameters (single)
+
+- Delimited by USER_START / USER_STOP.
+- Intended for sparing use. Any USER_DEFINED_x entries must be specified by the exchanging parties' ICD.
+
+## High-level parsing flow
+
+A robust KVN parser typically:
+1) Reads header
+   - Require `CCSDS_OCM_VERS`.
+   - Capture `CREATION_DATE`, `ORIGINATOR`, optional `MESSAGE_ID`.
+2) Reads metadata
+   - Expect `META_START` then ordered KVN keys; require `TIME_SYSTEM` and `EPOCH_TZERO`.
+   - Close on `META_STOP`.
+3) Streams remaining lines, switching mode on `*_START` / `*_STOP`
+   - On entering TRAJ/COV/MAN: cache section metadata (KVN keys), then parse non-KVN data lines until the section's `*_STOP`.
+   - Enforce per-block rules:
+     - absolute vs relative time consistency,
+     - monotonically increasing timetags and uniqueness,
+     - data-line element counts per TRAJ_TYPE/COV_TYPE/MAN_COMPOSITION,
+     - covariance ordering and PSD checks.
+4) Enforces global rules
+   - Section order as above; any number of TRAJ/COV/MAN blocks; at most one PHYS, PERT, OD, USER.
+   - SANA enumerations where required; frame epoch requirements when not intrinsic.
+   - Prohibit TEME use outside OMM/TLE contexts.
+
+## Common pitfalls to avoid
+
+- Mixing absolute and relative times within a single block.
+- Providing units inline on multipartite data lines.
+- Using TEME in OCM trajectory/covariance/maneuver frames.
+- Omitting SCLK_* fields when TIME_SYSTEM = SCLK.
+- Non-monotonic or duplicate time tags.
+- Covariance element count/ordering mismatches or non-PSD matrices.
+
+## Minimal KVN OCM example (illustrative)
+
+```
+CCSDS_OCM_VERS = 3.0
+CREATION_DATE = 2022-204T15:56:23Z
+ORIGINATOR = GSFC
+META_START
+TIME_SYSTEM = UTC
+EPOCH_TZERO = 2022-12-18T14:28:15Z
+META_STOP
+TRAJ_START
+CENTER_NAME = EARTH
+TRAJ_REF_FRAME = ICRF3
+TRAJ_TYPE = CARTP
+0.0 5000.0 -3000.0 1000.0
+60.0 5010.0 -2990.0 1005.0
+TRAJ_STOP
+```
+
+This example shows:
+- Header and single metadata block.
+- One trajectory block with relative times and CARTP elements (position only).

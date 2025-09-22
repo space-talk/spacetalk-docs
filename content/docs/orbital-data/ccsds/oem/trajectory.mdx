@@ -1,0 +1,87 @@
+
+---
+title: OEM Ephemeris Data
+description: Field dictionary and rules for OEM ephemeris lines (CCSDS 502.0-B-3, Section 5.2.4)
+outline: deep
+---
+
+# Trajectory State Time History
+
+## Purpose and scope
+
+Defines the structure and constraints of OEM ephemeris data lines that follow each metadata block. These lines provide Cartesian state vectors for interpolation.
+
+## Block keywords and order
+
+- Ephemeris lines follow META_STOP and precede an optional covariance block.
+- Comments are allowed only at the beginning of the ephemeris data section (before the first data line) and not within the block of ephemeris lines (7.8.9).
+- Each segment must contain at least two ephemeris lines ([Table 5-1](structure.md#oem-structure-table)).
+- [Table 5-1](structure.md#oem-structure-table): OEM Structure Overview - Ephemeris Data: M, >= 2 lines per segment.
+
+## Ephemeris data line structure (5.2.4.1–5.2.4.3)
+
+| Keyword | Description | Units | Default (if any) | Examples of Values | M/O/C |
+|---------|-------------|-------|------------------|--------------------|---------|
+| - | Epoch (time tag) of the state vector | - | - | 1996-12-18T22:00:00.0000 | M |
+| X | X-component of position vector | km | - | 35773.173676 | M |
+| Y | Y-component of position vector | km | - | 131.640706 | M |
+| Z | Z-component of position vector | km | - | 2.348777 | M |
+| X_DOT | X-component of velocity vector | km/s | - | 0.001161 | M |
+| Y_DOT | Y-component of velocity vector | km/s | - | 3.164996 | M |
+| Z_DOT | Z-component of velocity vector | km/s | - | -0.000008 | M |
+| X_DDOT | X-component of acceleration vector | km/s² | - | 0.000000 | O |
+| Y_DDOT | Y-component of acceleration vector | km/s² | - | 0.000000 | O |
+| Z_DDOT | Z-component of acceleration vector | km/s² | - | 0.000000 | O |
+
+## OEM Ephemeris fields
+
+| Component | Requirement | Type | Format / Allowed values | Units | Default | Description | Constraints and validation | Cross-reference | Example |
+|-----------|-------------|------|-------------------------|-------|---------|-------------|---------------------------|--------------------|---------|
+| Epoch (time tag) | Mandatory | time string | CCSDS Time A/B per TIME_SYSTEM | Forbidden | None | Time of state | Strictly increasing and unique within the segment; at least one space separates items | 5.2.4.3–5.2.4.5; 7.5.10–7.5.11 | 1996-12-18T22:00:00.0000 |
+| X | Mandatory | numeric | per 7.5 | Implicit km | None | Position X | Provided after the time tag | 5.2.4.1; 7.7.2 | 35773.173676 |
+| Y | Mandatory | numeric | per 7.5 | Implicit km | None | Position Y | — | 5.2.4.1; 7.7.2 | 131.640706 |
+| Z | Mandatory | numeric | per 7.5 | Implicit km | None | Position Z | — | 5.2.4.1; 7.7.2 | 2.348777 |
+| X_DOT | Mandatory | numeric | per 7.5 | Implicit km/s | None | Velocity X | — | 5.2.4.1; 7.7.2 | 0.001161 |
+| Y_DOT | Mandatory | numeric | per 7.5 | Implicit km/s | None | Velocity Y | — | 5.2.4.1; 7.7.2 | 3.164996 |
+| Z_DOT | Mandatory | numeric | per 7.5 | Implicit km/s | None | Velocity Z | — | 5.2.4.1; 7.7.2 | -0.000008 |
+| X_DDOT | Conditional | numeric | per 7.5 | Implicit km/s² | None | Acceleration X | If any acceleration is present, all three must be present (all-or-none triplet). Consistent across segment. | 5.2.4.2; 7.7.2 | 0.000000 |
+| Y_DDOT | Conditional | numeric | per 7.5 | Implicit km/s² | None | Acceleration Y | Same condition as X_DDOT | 5.2.4.2; 7.7.2 | 0.000000 |
+| Z_DDOT | Conditional | numeric | per 7.5 | Implicit km/s² | None | Acceleration Z | Same condition as X_DDOT | 5.2.4.2; 7.7.2 | 0.000000 |
+
+## Additional constraints and guidance
+
+- Space-delimited tokens; no keyword labels on data lines (7.4.1.2).
+- At least two ephemeris lines per segment ([Table 5-1](structure.md#oem-structure-table)).
+- Epochs must be strictly increasing and unique within each segment (5.2.4.4).
+- Across consecutive segments, repeated boundary epochs are permitted to support interpolation continuity when the first segment's STOP_TIME is greater than the next segment's START_TIME. USEABLE intervals must not overlap except at a shared endpoint (5.2.4.4).
+- TIME_SYSTEM must remain fixed across the entire OEM (5.2.4.5).
+- Acceleration triplet is optional and must be all-or-none (5.2.4.2).
+- Units must not be displayed in KVN ephemeris lines (7.7.2.1).
+- Interpolation:
+  - If INTERPOLATION is supplied, INTERPOLATION_DEGREE must be supplied and there must be enough nodes to apply it consistently (5.2.4.7).
+  - Typical methods: LINEAR, HERMITE, LAGRANGE.
+- Vector encoding: at least one space between all items (5.2.4.3).
+- Leap seconds (ss=60) are valid for time tags (7.5.10).
+- Numeric format: ≤16 significant digits; exponents in scientific notation allowed (7.5.6).
+
+## Validation checklist
+
+- Segment contains META_START … META_STOP before the first ephemeris line.
+- ≥ 2 data lines per segment; tokens count must be 7 (time + 6) or 10 (time + 9) consistently per line.
+- Time tags strictly increase; no duplicates within the segment.
+- START_TIME/STOP_TIME bracket the data; USEABLE_* are within [START_TIME, STOP_TIME].
+- No units present on KVN lines; numbers meet precision limits (≤ 16 significant digits).
+- Use pattern for time: `(\d{4}-\d{3}T\d{2}:\d{2}:\d{2}(\.\d+)?)(Z| \w+)?` for validation.
+
+## Edge cases and notes
+
+- Fictitious nodes: USEABLE_* may be used to bound the interpolation window while allowing additional nodes outside the useable interval ([Table 5-3](metadata.md#fields) notes).
+- Discontinuities: begin a new segment (metadata + ephemeris) after events such as maneuvers or other discontinuities (5.2.4.6).
+- TEME frame caution: for OEM, avoid TEME unless explicitly governed by an ICD (see metadata guidance).
+- Acceleration example: lines with 10 tokens if X_DDOT present.
+
+## Ephemeris with acceleration:
+
+```
+1996-12-18T22:00:00.0000 35773.173676 131.640706 2.348777 0.001161 3.164996 -0.000008 0.000000 0.000000 0.000000
+```

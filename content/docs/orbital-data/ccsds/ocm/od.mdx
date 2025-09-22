@@ -1,0 +1,67 @@
+---
+title: Orbit Determination Data
+description: Full field dictionary for OCM Orbit Determination section (CCSDS 502.0-B-3, §6.2.10; Table 6‑11)
+outline: deep
+---
+
+
+# Orbit Determination (OD) Data
+
+## Purpose and scope
+This optional block summarizes the OD method, spans, data volumes, quality measures, and sensors associated with the orbit solution. At most one OD block may appear in an OCM. When IDs correspond, this block can be referenced by TRAJ_BASIS_ID, COV_BASIS_ID, and MAN_BASIS_ID.
+
+## Block keywords and order
+Delimited by:
+- OD_START (line by itself)
+- OD_STOP (line by itself)
+
+Within the block, KVN keys shall appear in the fixed order below.
+
+## Fields
+
+| Field | Req | Type | Format/Enum | Units | Default | Description | Example | Notes |
+|-------|-----|------|-------------|-------|---------|-------------|---------|-------|
+| OD_START | Mandatory | delimiter | literal | n/a | n/a | Start of OD section. | OD_START |  |
+| COMMENT | Optional | text | comment | n/a | None | Comments immediately after OD_START. | COMMENT OD summary |  |
+| OD_ID | Mandatory | text | free text | n/a | None | Identifier for this OD solution. | `OD_20160402` |  |
+| OD_PREV_ID | Optional | text | free text | n/a | None | Previous OD identifier. | `OD_20160401` |  |
+| OD_METHOD | Mandatory | text | method:tool | n/a | None | OD method and tool (e.g., BWLS: BAHN, EKF: ODIN, SF: ODTK). | BWLS: BAHN | Free text with recommended pattern. |
+| OD_EPOCH | Mandatory | time/rel | CCSDS A/B or relative seconds | n/a | None | Epoch of solved‑for state (in TIME_SYSTEM of OCM). | `2001-11-06T11:17:33Z` |  |
+| DAYS_SINCE_FIRST_OBS | Optional | real | scalar | d | None | Days from first accepted observation to OD_EPOCH (may be < 0). | 3.5 | Relative to OD_EPOCH. |
+| DAYS_SINCE_LAST_OBS | Optional | real | scalar | d | None | Days from last accepted observation to OD_EPOCH (may be < 0). | 1.2 |  |
+| RECOMMENDED_OD_SPAN | Optional | real | scalar | d | None | Recommended observation span for OD (batch systems). | 5.2 |  |
+| ACTUAL_OD_SPAN | Optional | real | scalar | d | None | Actual observation span used. Should equal (FIRST − LAST). | 2.3 |  |
+| OBS_AVAILABLE | Optional | integer | scalar | n/a | None | Number of observations available. | `100` |  |
+| OBS_USED | Optional | integer | scalar | n/a | None | Number of observations accepted/used. | `90` |  |
+| TRACKS_AVAILABLE | Optional | integer | scalar | n/a | None | Number of sensor tracks available. | 33 |  |
+| TRACKS_USED | Optional | integer | scalar | n/a | None | Number of sensor tracks used. | `30` |  |
+| MAXIMUM_OBS_GAP | Optional | real | scalar | d | None | Maximum gap between observations. | `1.0` |  |
+| OD_EPOCH_EIGMAJ | Optional | real | scalar | m | None | 1‑σ major eigenvalue of positional error ellipsoid at OD_EPOCH. | 58.73 |  |
+| OD_EPOCH_EIGINT | Optional | real | scalar | m | None | 1‑σ intermediate eigenvalue at OD_EPOCH. | 35.7 |  |
+| OD_EPOCH_EIGMIN | Optional | real | scalar | m | None | 1‑σ minor eigenvalue at OD_EPOCH. | 21.5 |  |
+| OD_MAX_PRED_EIGMAJ | Optional | real | scalar | m | None | Max predicted 1‑σ major eigenvalue over OCM TIME_SPAN. | 21.5 |  |
+| OD_MIN_PRED_EIGMIN | Optional | real | scalar | m | None | Min predicted 1‑σ minor eigenvalue over OCM TIME_SPAN. | 21.5 |  |
+| OD_CONFIDENCE | Optional | real | percent | % | None | OD confidence metric (0-100%). Definition by ICD. | 95.3 | Filter-based relevance noted in the standard. |
+| GDOP | Optional | real | scalar | n/a | None | Generalized Dilution of Precision; observability metric. | `0.857` | See Annex F for formulation. |
+| SOLVE_N | Optional | integer | scalar | n/a | None | Number of solve-for state elements. | 6 |  |
+| SOLVE_STATES | Optional | text | comma-delimited | n/a | None | Description of solve-for states. | POS[3], VEL[3] | Free text. |
+| CONSIDER_N | Optional | integer | scalar | n/a | None | Number of consider parameters. | 2 |  |
+| CONSIDER_PARAMS | Optional | text | comma-delimited | n/a | None | Consider parameters included. | DRAG, SRP |  |
+| SEDR | Optional | real | scalar | W/kg | None | Specific Energy Dissipation Rate averaged during OD. | `4.54570E-05` | See Annex F for definition. |
+| SENSORS_N | Optional | integer | scalar | n/a | None | Number of sensors used. | 3 |  |
+| SENSORS | Optional | text | comma-delimited | n/a | None | Sensor identifiers. | EGLIN, FYLINGDALES |  |
+| WEIGHTED_RMS | Optional | real | scalar | measurement units | None | Weighted RMS residual ratio or value; see standard. | 1.3 | Value semantics may depend on measurement types. |
+| DATA_TYPES | Optional | text | comma-delimited | n/a | None | Observation data types used (align with CCSDS TDM where possible). | ANGLE_1, RANGE |  |
+
+## Validation and constraints
+
+- Only one OD block per OCM.
+- OD_METHOD should indicate both algorithm class and tool to avoid ambiguity.
+- OD_EPOCH must be interpretable using OCM TIME_SYSTEM (absolute or relative).
+- Counts and spans are informational; consistency checks (e.g., ACTUAL_OD_SPAN vs. day differences) are recommended but not mandated.
+
+## Cross-references
+
+- Linked trajectory/covariance/maneuver blocks via *_BASIS_ID.
+- TDM data types (see CCSDS 503.0-B-2) for DATA_TYPES vocabulary.
+- GDOP and SEDR definitions: Annex F in the Blue Book.

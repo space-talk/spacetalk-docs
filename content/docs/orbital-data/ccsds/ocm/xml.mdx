@@ -1,0 +1,205 @@
+---
+title: OCM in XML
+description: XML construction rules, schema hooks, and short examples for OCM (CCSDS 502.0-B-3, §8.11)
+outline: deep
+---
+
+# OCM in XML
+
+This page summarizes how to construct an XML representation of an OCM per CCSDS 505.0-B-3 (NDM/XML) and CCSDS 502.0-B-3 §8.11.
+
+## Root and schema
+
+- First line:
+  - `<?xml version="1.0" encoding="UTF-8"?>`
+- Root element:
+  - `<ocm ... id="CCSDS_OCM_VERS" version="3.0">`
+- XML Schema Instance namespace attribute (required):
+  - `xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"`
+- Schema location attribute (optional for validation; pick one flavor):
+  - Unqualified: `xsi:noNamespaceSchemaLocation="https://sanaregistry.org/r/ndmxml_unqualified/ndmxml-3.0.0-master-3.0.xsd"`
+  - Qualified: `xsi:noNamespaceSchemaLocation="https://sanaregistry.org/r/ndmxml_qualified/ndmxml-3.0.0-master-3.0.xsd"`
+
+## Overall structure
+
+- Header and body:
+  - `<header> ... </header>`
+  - `<body><segment> ... </segment></body>`
+- One `<segment>` per OCM, containing:
+  - `<metadata> ... </metadata>`
+  - `<data> ... </data>`
+
+## Header section
+
+- Elements mirror the KVN header keys:
+  - `<COMMENT>`, `<CREATION_DATE>`, `<ORIGINATOR>`, `<MESSAGE_ID>`.
+
+Example:
+
+```xml
+<header>
+  <COMMENT>Example OCM/XML</COMMENT>
+  <CREATION_DATE>2024-120T14:32:00Z</CREATION_DATE>
+  <ORIGINATOR>GSFC</ORIGINATOR>
+  <MESSAGE_ID>OCM_EX_001</MESSAGE_ID>
+</header>
+```
+
+## Metadata section
+
+- Elements mirror OCM metadata keys (Table 6‑3).
+- Example:
+
+```xml
+<metadata>
+  <OBJECT_NAME>OSPREY 5</OBJECT_NAME>
+  <INTERNATIONAL_DESIGNATOR>2022-999A</INTERNATIONAL_DESIGNATOR>
+  <TIME_SYSTEM>UTC</TIME_SYSTEM>
+  <EPOCH_TZERO>2022-12-18T14:28:15.1172Z</EPOCH_TZERO>
+  <OPS_STATUS>OPERATIONAL</OPS_STATUS>
+</metadata>
+```
+
+## Data section
+
+Within `<data> ... </data>`, OCM/XML uses section tags that encapsulate per‑block content:
+
+- Trajectory: `<traj>` … `<trajLine>...</trajLine>` … `</traj>`
+- Physical: `<phys>` … `</phys>`
+- Covariance: `<cov>` … `<covLine>...</covLine>` … `</cov>`
+- Maneuver: `<man>` … `<manLine>...</manLine>` … `</man>`
+- Perturbations: `<pert>` … `</pert>`
+- Orbit Determination: `<od>` … `</od>`
+- User-defined: `<user>` … `</user>`
+
+Notes
+- The data-line elements `<trajLine>`, `<covLine>`, and `<manLine>` are of type string; they contain whitespace-separated values including the time tag. Units for these lines are documented with the corresponding `TRAJ_UNITS`, `COV_UNITS`, or `MAN_UNITS` elements inside the section (not inline).
+- Scalar elements may carry an optional `units="..."` attribute in XML for clarity (e.g., `<WET_MASS units="kg">100.0</WET_MASS>`).
+
+### Trajectory (`<traj>`)
+
+Include section metadata as uppercase tags (e.g., `<CENTER_NAME>`, `<TRAJ_REF_FRAME>`, `<TRAJ_TYPE>`, optional `<TRAJ_UNITS>`), followed by one or more `<trajLine>` strings.
+
+Example:
+
+```xml
+<traj>
+  <CENTER_NAME>EARTH</CENTER_NAME>
+  <TRAJ_REF_FRAME>ICRF3</TRAJ_REF_FRAME>
+  <TRAJ_TYPE>CARTPV</TRAJ_TYPE>
+  <TRAJ_UNITS>[km,km,km,km/s,km/s,km/s]</TRAJ_UNITS>
+  <trajLine>0.0 5000.0 -3000.0 1000.0 1.0 2.0 3.0</trajLine>
+  <trajLine>60.0 5010.0 -2990.0 1005.0 1.0 2.0 3.0</trajLine>
+</traj>
+```
+
+### Physical (`<phys>`)
+
+Add fields as uppercase tags. Use `units` attributes on scalars where helpful.
+
+```xml
+<phys>
+  <WET_MASS units="kg">472.3</WET_MASS>
+  <OEB_MAX units="m">2.0</OEB_MAX>
+  <AREA_ALONG_OEB_MAX units="m**2">0.5</AREA_ALONG_OEB_MAX>
+</phys>
+```
+
+### Covariance (`<cov>`)
+
+Provide metadata tags (e.g., `<COV_REF_FRAME>`, `<COV_TYPE>`, `<COV_ORDERING>`, `<COV_UNITS>`), then one or more `<covLine>` strings.
+
+```xml
+<cov>
+  <COV_REF_FRAME>TNW_INERTIAL</COV_REF_FRAME>
+  <COV_TYPE>CARTPV</COV_TYPE>
+  <COV_ORDERING>LTM</COV_ORDERING>
+  <COV_UNITS>[km,km,km,km/s,km/s,km/s]</COV_UNITS>
+  <covLine>0.0 1.0E-3 0 1.0E-3 0 0 1.0E-3 0 0 0 1.0E-6 0 0 0 0 1.0E-6 0 0 0 0 0 1.0E-6</covLine>
+</cov>
+```
+
+### Maneuver (`<man>`)
+
+Define metadata (e.g., `<MAN_ID>`, `<MAN_DEVICE_ID>`, `<MAN_REF_FRAME>`, `<DC_TYPE>`, `<MAN_COMPOSITION>`, `<MAN_UNITS>`), then `<manLine>` strings.
+
+```xml
+<man>
+  <MAN_ID>DEPLOY_SEQ</MAN_ID>
+  <MAN_DEVICE_ID>DEPLOY</MAN_DEVICE_ID>
+  <MAN_REF_FRAME>RSW_ROTATING</MAN_REF_FRAME>
+  <DC_TYPE>CONTINUOUS</DC_TYPE>
+  <MAN_COMPOSITION>TIME_RELATIVE, DEPLOY_ID, DEPLOY_DV_X, DEPLOY_DV_Y, DEPLOY_DV_Z, DEPLOY_MASS</MAN_COMPOSITION>
+  <MAN_UNITS>[s, n/a, km/s, km/s, km/s, kg]</MAN_UNITS>
+  <manLine>500.0 CUBE_01 0.00028 -0.00094 0.00018 -1.0</manLine>
+</man>
+```
+
+### Perturbations (`<pert>`)
+
+Provide uppercase tags for items from Table 6‑10:
+
+```xml
+<pert>
+  <ATMOSPHERIC_MODEL>NRLMSIS00</ATMOSPHERIC_MODEL>
+  <GRAVITY_MODEL>EGM-96: 36D 36O</GRAVITY_MODEL>
+  <GM units="km**3/s**2">398600.4415</GM>
+  <N_BODY_PERTURBATIONS>MOON, SUN</N_BODY_PERTURBATIONS>
+</pert>
+```
+
+### Orbit Determination (`<od>`)
+
+Supply uppercase tags mirroring the OD table:
+
+```xml
+<od>
+  <OD_ID>OD_10059</OD_ID>
+  <OD_METHOD>SF: ODTK</OD_METHOD>
+  <OD_EPOCH>2022-12-18T11:17:33Z</OD_EPOCH>
+  <OBS_USED>273</OBS_USED>
+  <TRACKS_USED>91</TRACKS_USED>
+</od>
+```
+
+### User-defined (`<user>`)
+
+```xml
+<user>
+  <USER_DEFINED parameter="EARTH_MODEL">WGS-84</USER_DEFINED>
+</user>
+```
+
+## Minimal OCM/XML example
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<ocm xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:noNamespaceSchemaLocation="https://sanaregistry.org/r/ndmxml_unqualified/ndmxml-3.0.0-master-3.0.xsd"
+     id="CCSDS_OCM_VERS" version="3.0">
+  <header>
+    <CREATION_DATE>2024-120T14:32:00Z</CREATION_DATE>
+    <ORIGINATOR>GSFC</ORIGINATOR>
+  </header>
+  <body><segment>
+    <metadata>
+      <TIME_SYSTEM>UTC</TIME_SYSTEM>
+      <EPOCH_TZERO>2024-120T14:30:00Z</EPOCH_TZERO>
+      <OBJECT_NAME>DEMO</OBJECT_NAME>
+    </metadata>
+    <data>
+      <traj>
+        <CENTER_NAME>EARTH</CENTER_NAME>
+        <TRAJ_REF_FRAME>ICRF3</TRAJ_REF_FRAME>
+        <TRAJ_TYPE>CARTPV</TRAJ_TYPE>
+        <TRAJ_UNITS>[km,km,km,km/s,km/s,km/s]</TRAJ_UNITS>
+        <trajLine>0.0 7000 0 0 0 7.5 0</trajLine>
+      </traj>
+    </data>
+  </segment></body>
+</ocm>
+```
+
+## Combined NDM/XML
+
+To package multiple messages (OPM/OMM/OEM/OCM) in one file, use the `<ndm>` root as described in CCSDS 505.0-B-3; insert each message as a child element with `id` and `version` attributes. See Blue Book §8.12 and examples in Annex G.

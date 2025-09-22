@@ -1,0 +1,93 @@
+---
+title: OCM Metadata
+description: Full field dictionary for OCM Metadata (CCSDS 502.0-B-3, §6.2.4; Table 6‑3)
+outline: deep
+---
+
+
+# OCM Metadata
+
+## Purpose and scope
+The Metadata block declares identification, timing, time system, and optional provenance and linkage needed to interpret all subsequent data blocks. Exactly one metadata block shall be present.
+
+## Block keywords and order
+Delimited by:
+- META_START (line by itself)
+- META_STOP (line by itself)
+
+All KVN assignments between these delimiters shall appear in the fixed order given below. Only one metadata block is allowed in an OCM.
+
+## Fields
+
+Legend: Type column uses scalar types unless noted (list indicates comma-delimited free text on one KVN line); "time" uses CCSDS A/B unless noted; link to enumerations and formats is provided in the Format/Enum column.
+
+| Field | Requirement | Type | Format/Enum | Units | Default | Description | Example | Notes |
+|-------|-------------|------|-------------|-------|---------|-------------|---------|-------|
+| META_START | Mandatory | delimiter | literal | n/a | n/a | Marks start of metadata block. | META_START | On its own line. |
+| COMMENT | Optional | text | comment | n/a | None | One or more comments at beginning of metadata. | COMMENT This is a comment | See placement rules. |
+| OBJECT_NAME | Optional | text | free text | n/a | None | Space object name (UNOOSA index or operator naming recommended). | OSPREY 5 | Use UNKNOWN if withheld/unknown. |
+| INTERNATIONAL_DESIGNATOR | Optional | text | COSPAR `YYYY-NNNP\{PP\}` | n/a | None | International launch designator. | 2022-999A | Use UNKNOWN if not applicable/undisclosed. |
+| CATALOG_NAME | Optional | text | SANA catalogs or organization | n/a | None | Name of catalog providing OBJECT_DESIGNATOR. | CSPOC | See SANA "space_object_catalog". |
+| OBJECT_DESIGNATOR | Optional | text | free text | n/a | None | Catalog-specific identifier for the object. | 98765 | Conditional in some workflows with CATALOG_NAME; the standard does not enforce hard coupling. |
+| ALTERNATE_NAMES | Optional | list | comma-delimited names | n/a | None | Alternate names/aliases. | SV08, IN8 | Free text. |
+| ORIGINATOR_POC | Optional | text | free text | n/a | None | Programmatic point of contact for the message. | R. Rabbit |  |
+| ORIGINATOR_POSITION | Optional | text | free text | n/a | None | Role/title of originator POC. | Mission Design Lead |  |
+| ORIGINATOR_PHONE | Optional | text | free text | n/a | None | Originator phone. | +1-719-555-1234 | Format not constrained by the standard. |
+| ORIGINATOR_EMAIL | Optional | text | email | n/a | None | Originator email. | john.doe@somewhere.org |  |
+| ORIGINATOR_ADDRESS | Optional | text | free text | n/a | None | Originator postal address (suggest comma-delimited). | 5040 Spaceflight Ave., Cocoa Beach, FL, USA, 12345 |  |
+| TECH_ORG | Optional | text | SANA organization | n/a | None | Creating agency/operator (technical). | NASA |  |
+| TECH_POC | Optional | text | free text | n/a | None | Technical point of contact. | Maxwell Smart |  |
+| TECH_POSITION | Optional | text | free text | n/a | None | Title/role of technical POC. | Flight Dynamics |  |
+| TECH_PHONE | Optional | text | free text | n/a | None | Technical POC phone. | +49 6151 30312 |  |
+| TECH_EMAIL | Optional | text | email | n/a | None | Technical POC email. | john.doe@somewhere.org |  |
+| TECH_ADDRESS | Optional | text | free text | n/a | None | Technical POC postal address. | 123 Example Rd, City, CC |  |
+| PREVIOUS_MESSAGE_ID | Optional | text | free text | n/a | None | ID of previous OCM from this originator for this object. | OCM_201113719184 | May be provided without the epoch. |
+| NEXT_MESSAGE_ID | Optional | text | free text | n/a | None | Anticipated/actual next message ID. | OCM_201113719186 | May be provided without the epoch. |
+| ADM_MSG_LINK | Optional | text | free text | n/a | None | Linked ADM identifier(s). | ADM_ID_0572 |  |
+| CDM_MSG_LINK | Optional | text | free text | n/a | None | Linked CDM identifier(s). | CDM_ID_8257 |  |
+| PRM_MSG_LINK | Optional | text | free text | n/a | None | Linked PRM identifier(s). | PRM_ID_6897 |  |
+| RDM_MSG_LINK | Optional | text | free text | n/a | None | Linked RDM identifier(s). | RDM_ID_1839 |  |
+| TDM_MSG_LINK | Optional | list | comma-delimited | n/a | None | Linked TDM files/IDs supporting OD. | TDM_835, TDM_836 |  |
+| OPERATOR | Optional | text | free text | n/a | None | Operator of the space object. | INTELSAT |  |
+| OWNER | Optional | text | free text | n/a | None | Owner of the space object. | SIRIUS |  |
+| COUNTRY | Optional | text | free text | n/a | None | Country or code for the owner/operator. | US |  |
+| CONSTELLATION | Optional | text | free text | n/a | None | Constellation name. | SPIRE |  |
+| OBJECT_TYPE | Optional | enum | /refs/enums-formats-units#object-types | n/a | None | Object type (e.g., PAYLOAD, ROCKET_BODY, DEBRIS). | PAYLOAD |  |
+| TIME_SYSTEM | Mandatory | enum | /refs/enums-formats-units#time-systems | n/a | None | Time system used throughout the message for absolute times (except CREATION_DATE). | UTC | Required before any time interpretation. |
+| EPOCH_TZERO | Mandatory | time | CCSDS A/B in TIME_SYSTEM (SCLK exception) | n/a | None | Reference epoch for relative times. For SCLK, EPOCH_TZERO is interpreted in UTC. | 2022-12-18T14:28:15Z | Anchor for all relative timetags. |
+| OPS_STATUS | Optional | enum | /refs/enums-formats-units#ops-status | n/a | None | Operational status. | OPERATIONAL |  |
+| ORBIT_CATEGORY | Optional | enum | /refs/enums-formats-units#orbit-categories | n/a | None | Broad orbit class (LEO/GEO/etc.). | GEO |  |
+| OCM_DATA_ELEMENTS | Optional | list | values from `\{ORB, PHYS, COV, MAN, PERT, OD, USER\}` | n/a | None | Describes which data blocks are present, in file order. | `ORB, PHYS, COV` | For clarity only; does not replace actual blocks. |
+| SCLK_OFFSET_AT_EPOCH | Conditional | real | scalar | s | 0.0 | Spacecraft clock counts at EPOCH_TZERO; required if TIME_SYSTEM = SCLK. | -5000.0 | Used only with SCLK. |
+| SCLK_SEC_PER_SI_SEC | Conditional | real | scalar | s | 1.0 | Spacecraft clock seconds per SI second; required if TIME_SYSTEM = SCLK. | 2.5 | Used only with SCLK. |
+| PREVIOUS_MESSAGE_EPOCH | Optional | time | CCSDS A/B | n/a | None | Creation epoch of previous message for this object. | 2001-11-06T11:17:33Z | May be provided without PREVIOUS_MESSAGE_ID. |
+| NEXT_MESSAGE_EPOCH | Optional | time | CCSDS A/B | n/a | None | Anticipated/actual epoch of next message. | 2001-11-07T11:17:33Z | May be provided without NEXT_MESSAGE_ID. |
+| START_TIME | Optional | time or relative seconds | CCSDS A/B or relative | n/a | None | Earliest data time contained in this OCM. | 0.0 | Absolute or relative; consistent with block usage. |
+| STOP_TIME | Optional | time or relative seconds | CCSDS A/B or relative | n/a | None | Latest data time contained in this OCM. | 86400.0 | Absolute or relative; consistent with block usage. |
+| TIME_SPAN | Optional | real | scalar | d | None | Stop minus start, in days, independent of whether START/STOP are present. | 20.0 | Informational. |
+| TAIMUTC_AT_TZERO | Optional | integer/real | scalar | s | None | TAI−UTC leap second offset at EPOCH_TZERO. | 36 |  |
+| NEXT_LEAP_EPOCH | Optional | time | CCSDS A/B | n/a | None | Epoch of next leap second. | 2016-12-31T23:59:60Z |  |
+| NEXT_LEAP_TAIMUTC | Conditional | integer/real | scalar | s | None | TAI−UTC after the next leap second; provide if NEXT_LEAP_EPOCH given. | 37 |  |
+| UT1MUTC_AT_TZERO | Optional | real | scalar | s | None | UT1−UTC offset at EPOCH_TZERO. | 0.357 |  |
+| EOP_SOURCE | Optional | text | free text | n/a | None | Source/version of EOP, leap seconds, TAI−UT1, etc. | CELESTRAK_20201028 |  |
+| INTERP_METHOD_EOP | Optional | enum/text | free text (e.g., PRECEDING_VALUE, LINEAR) | n/a | None | EOP selection/interpolation method. | PRECEDING_VALUE |  |
+| CELESTIAL_SOURCE | Optional | text | free text | n/a | None | Source/version of celestial ephemerides (e.g., JPL DE). | JPL_DE_FILES |  |
+| META_STOP | Mandatory | delimiter | literal | n/a | n/a | Marks end of metadata block. | META_STOP | On its own line. |
+
+## Validation rules and constraints
+- Exactly one metadata block per OCM.
+- TIME_SYSTEM and EPOCH_TZERO are mandatory and must precede any relative-time sections.
+- SCLK usage requires both SCLK_OFFSET_AT_EPOCH and SCLK_SEC_PER_SI_SEC; interpret EPOCH_TZERO in UTC in that case.
+- START_TIME/STOP_TIME, when present, may be absolute or relative; do not mix within the same KVN assignment, and ensure consistency with the chosen interpretation of the blocks.
+- All absolute time strings must validate against CCSDS formats (see /ocm/common-syntax).
+- Use SANA enumerations for OBJECT_TYPE, TIME_SYSTEM, frames, and categories.
+
+## Edge cases
+- Use UNKNOWN for undisclosed identifiers or names where allowed.
+- COUNTRY is unconstrained by the standard; establish coding in the ICD if needed.
+- OCM_DATA_ELEMENTS is informational; do not rely on it for parsing.
+
+## Cross-references
+- Frames and enumerations → /refs/enums-formats-units
+- General timing rules → /ocm/common-syntax
+- Section ordering → /ocm/structure

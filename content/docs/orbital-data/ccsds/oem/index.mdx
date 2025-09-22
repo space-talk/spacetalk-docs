@@ -1,0 +1,41 @@
+---
+title: ODM overview (focus on OEM)
+description: Executive summary, scope, and when to use the Orbit Ephemeris Message vs. OPM/OMM/OCM
+outline: deep
+---
+
+# CCSDS Orbit Ephemeris Message (OEM)
+
+---
+
+The Orbit Ephemeris Message (OEM) provides high‑fidelity, time‑tagged Cartesian ephemerides (position/velocity, optional acceleration) for interpolation without prescribing propagation models. It supports pre‑flight planning, operations scheduling, orbit comparison, navigation, interference assessment, collision avoidance, and collaborative maneuver planning.
+
+- Applicable across the spacecraft and launch vehicle lifecycle.
+- Use OEM when you need a time series of states to interpolate within a bounded span at higher fidelity/precision than an OPM or OMM.
+- Optional covariance matrices can accompany ephemeris segments.
+
+## When to choose each ODM
+
+- OPM (Orbit Parameter Message)
+  - Single state at one epoch; optional maneuvers and simple perturbation parameters.
+  - Requires propagation by the recipient.
+- OMM (Orbit Mean‑Elements Message)
+  - Mean elements for analytical/semi‑analytical propagators (e.g., SGP/SGP4/TLE).
+- OEM (Orbit Ephemeris Message)
+  - Tabular states for interpolation only (no propagation required to interpret).
+  - Optional acceleration triplets; optional covariance time histories per segment.
+- OCM (Orbit Comprehensive Message)
+  - Aggregates and extends OPM/OMM/OEM content with flexible sections (perturbations, maneuvers, OD, etc.).
+
+## OEM at a glance
+
+- Format: KVN (Keyword = Value Notation) for header and metadata; fixed‑structure lines for ephemeris and covariance data sections. XML mapping is standardized in Section 8.
+- Units in KVN ephemeris and covariance lines: implicit (km, km/s, km/s²; covariance units derived accordingly). No units text appears in KVN lines.
+- Time systems: CREATION_DATE is always UTC; all other times are per TIME_SYSTEM within each metadata block (Section 7.5.11).
+- Segments: One metadata block per ephemeris block; segments can repeat. TIME_SYSTEM must not change within an OEM.
+
+## Core references
+
+- Section 5: OEM content and structure (Tables 5‑1 to 5‑4)
+- Section 7: Lines, KVN rules, values, units, comments, validation
+- Section 8.10: OEM/XML instantiation

@@ -1,0 +1,86 @@
+---
+title: OEM Interoperability and Crosswalks
+description: When to use OEM vs OPM/OMM/OCM, NDM aggregation, and extensions via ICDs (USER_DEFINED)
+outline: deep
+---
+
+# When to use OEM vs other ODMs
+
+## OEM
+
+Provides tabular Cartesian states (position/velocity with optional acceleration) for interpolation within a declared time span—no propagation required to interpret the file.
+Best for operations that need high-fidelity predicts, precise pointing, interference assessment, collision avoidance, and multi-party exchange with unambiguous frames/times.
+Use when: Multiple epochs needed; high precision; covariance included.
+
+## OPM
+
+Single state at one epoch plus optional maneuvers and simple perturbation context; receiver must propagate.
+Use when: Snapshot state; short-term predict with propagation.
+
+## OMM
+
+Mean elements for analytical/semi-analytical propagators (e.g., SGP/SGP4). TEME is specifically permitted for TLE-based content in OMM; not generally suitable for OEM.
+Use when: Legacy TLE compatibility; coarse ephemeris.
+
+## OCM
+
+Comprehensive, flexible container that can include states, maneuvers, perturbations, OD metrics, multiple frames, and covariance time histories.
+Use when: Full mission context; higher-order states (e.g., attitude).
+
+## NDM combined instantiation (8.12)
+
+Multiple ODMs can be combined under a single `<ndm>` root in XML.
+Each contained message (`<opm>`, `<omm>`, `<oem>`, `<ocm>`) retains its own `id="CCSDS_xxx_VERS"` and `version="3.0"` attributes.
+Use cases
+
+Packaging constellation-wide content.
+Bundling "no-burn" and "with-burn" OEMs or pairing an OEM with one or more OPMs highlighting key epochs.
+Sharing a full OEM ephemeris with an OCM that carries maneuver and perturbations specification.
+
+KVN equivalent: Sequential ODMs in one file, separated by headers.
+
+## Frames, time systems, and caveats
+
+TIME_SYSTEM
+
+CREATION_DATE is UTC; all other times per TIME_SYSTEM specified in each OEM metadata block, and TIME_SYSTEM is fixed within the file.
+
+## Frames
+
+Use standard inertial or body-fixed frames (e.g., EME2000, ICRF, ITRF20xx). Declare REF_FRAME_EPOCH when required.
+TEME: the Blue Book restricts TEME usage to OMM/TLE. Avoid TEME in OEM unless exchange partners agree in an ICD.
+
+## SCLK and mission-relative times
+
+Blue Book supports SCLK as a time system in Annex B; however OEM implementations should prefer standard time scales.
+If SCLK must be used, an ICD shall define the mapping to UTC (epoch, partitions, drift, SCLK_SEC_PER_SI_SEC). See Annex I for extensions.
+
+## Interoperability tips
+
+Keep TIME_SYSTEM consistent across the entire OEM.
+Do not include units text in KVN ephemeris or covariance lines; consumers should assume km, km/s, km/s² (and derived covariance units).
+For discontinuities (maneuvers, eclipse modeling changes), split ephemeris into separate segments to avoid cross-segment interpolation (5.2.4.6).
+Provide INTERPOLATION and INTERPOLATION_DEGREE when recommending a particular reconstruction method; ensure sufficient nodes for the specified degree.
+Covariances
+
+Use lower-triangular 6×6 state (X,Y,Z,X_DOT,Y_DOT,Z_DOT); include EPOCH and optionally COV_REF_FRAME.
+Ensure matrices are positive semidefinite and ordered by increasing EPOCH.
+
+OEM state at single epoch → OPM; add perturbations for propagation.
+
+SANA registries: Validate ORIGINATOR, CENTER_NAME, REF_FRAME against https://sanaregistry.org (Annex B).
+
+## Extensions and ICDs (Annex I)
+
+USER_DEFINED content is not part of OEM; if extra information is needed, prefer an OCM or use an ICD describing companion content.
+If non-standard frames, time systems (e.g., SCLK), or specialized interpolation schemes are required, define them in an ICD and reference it in COMMENT lines.
+Coordinate registries (SANA)
+
+Organizations (ORIGINATOR), orbit centers, time systems, frames, orbital elements: use SANA registries to ensure shared vocabulary (Annex B).
+
+ICD example: Define custom covariance for acceleration if needed (not in OEM 6x6).
+
+KVN to XML crosswalk snippet:
+
+KVN: EPOCH = 2023-01-01T00:00:00 X=1000
+XML: `<statevector><epoch>2023-01-01T00:00:00</epoch><x>1000</x></statevector>`

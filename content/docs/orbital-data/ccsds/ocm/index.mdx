@@ -1,0 +1,74 @@
+---
+title: CCSDS ODM v3.0 — Orbit Comprehensive Message (OCM)
+description: VitePress landing page for the CCSDS Orbit Comprehensive Message documentation set (502.0-B-3, Apr 2023)
+outline: deep
+---
+
+# CCSDS Orbit Comprehensive Message (OCM)
+
+---
+
+The Orbit Comprehensive Message (OCM) is the most flexible member of the CCSDS Orbit Data Messages (ODM) family. It aggregates and extends OPM, OMM, and OEM capabilities in a single, compact message:
+- Hybrid orbit content: single-epoch and time histories; Cartesian and/or orbital elements.
+- Covariance content: time series; selectable dimension/order; multiple element-set bases.
+- Maneuvers: impulsive and finite thrust, duty cycles (time- and angle-based), and deployment events with host/child mass and ΔV relationships.
+- Space-object physical characteristics for drag/SRP and collision-probability use.
+- Perturbations model specification and sources (EOP, celestial ephemerides, atmosphere, gravity, shadowing, space weather).
+- Orbit-determination (OD) settings and quality metrics.
+
+OCM supports parent/child deployments within one message and is suitable for automated, high-volume exchanges (e.g., constellations) while remaining concise.
+
+Standard: CCSDS 502.0-B-3 (Apr 2023).
+
+## Scope and lifecycle applicability
+
+OCM is applicable to all phases: pre‑flight design, LEOP, routine operations, maintenance, disposal, and launch/mission segments. It enables:
+- pre-flight planning and scheduling,
+- operations predicts and antenna pointing,
+- navigation, propagation, and reconstruction,
+- electromagnetic and physical interference assessments,
+- conjunction screening and collision-risk analysis,
+- collaborative maneuver design and execution.
+
+## When to choose OCM vs OPM/OMM/OEM
+
+Select the message based on required content and consumer capabilities:
+
+- Use OCM when you need one or more of:
+  - multiple or hybrid trajectory representations (elements and/or Cartesian),
+  - time histories for states and/or covariances,
+  - maneuver time histories (including duty-cycles, low-thrust, or deployments),
+  - perturbations and data-source disclosure for propagation/interpolation,
+  - compact packaging of many optional data blocks in one file.
+
+- Use OPM (single state with optional maneuvers) when:
+  - a single-epoch Cartesian state (plus simple maneuvers) suffices,
+  - the receiver will propagate with mutually agreed models.
+
+- Use OMM (mean elements, TLE-like exchanges) when:
+  - the receiver uses analytical/semi-analytical models (e.g., SGP4/XP),
+  - you need an interoperable TLE-style exchange.
+
+- Use OEM (high-fidelity tabular ephemeris) when:
+  - you will provide position/velocity time series for interpolation,
+  - you do not need to embed maneuver/perturbations modeling details.
+
+Notes
+- OCM can replace multiple OPM/OMM/OEM files for a single object.
+- OCM supports parent/child deployments; multi-object exchanges otherwise require multiple files or an XML NDM combined instantiation.
+
+## Key advantages of OCM
+
+- Hybrid content in one file; minimal mandatory fields for compactness.
+- Explicit time-system handling and a reference epoch (EPOCH_TZERO) for relative times.
+- Rich linking to related messages (ADM, CDM, PRM, RDM, TDM).
+- Standardized enumerations and frames via SANA registries.
+- XML representation available; KVN remains the primary non-XML format.
+
+## Interoperability expectations
+
+- Use only ASCII; adhere to KVN key ordering and block ordering.
+- Use SANA-registered values where required (time systems, centers, frames, element sets, covariance types).
+- Keep time tags within a block either all absolute or all relative (no mixing).
+- Ensure covariance positive semi-definiteness and correct element ordering.
+- Avoid TEME in OCM except where explicitly permitted by the standard (TEME is reserved for OMM/TLE contexts).

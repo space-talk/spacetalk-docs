@@ -1,0 +1,637 @@
+---
+title: TLE Implementation Guide
+description: Practical implementation guidance with code examples and algorithms
+outline: deep
+---
+
+# TLE Implementation Guide
+
+## Reference Implementations
+
+### Python Implementation
+
+#### Complete TLE Parser with Validation
+
+```python
+from dataclasses import dataclass
+from typing import List, Optional, Tuple
+import re
+
+@dataclass
+class TLE:
+    """Two-Line Element Set data structure"""
+    satnum: int
+    classification: str
+    cospar: Optional[str]
+    epoch_year: int
+    epoch_day: float
+    first_deriv: float
+    second_deriv: float
+    bstar: float
+    ephem_type: int
+    elem_num: int
+    inclination: float
+    raan: float
+    ecc: float
+    arg_perigee: float
+    mean_anomaly: float
+    mean_motion: float
+    rev_num: int
+
+class TLEParser:
+    """Robust TLE parser with strict and lenient modes"""
+
+    def __init__(self, strict: bool = False):
+        self.strict = strict
+
+    def parse_tle(self, lines: List[str]) -> Tuple[TLE, List[str]]:
+        """
+        Parse TLE from two-line input
+
+        Args:
+            lines: List of two strings representing TLE lines
+
+        Returns:
+            Tuple of (TLE object, list of warnings)
+
+        Raises:
+            ValueError: In strict mode or for critical errors
+        """
+        if len(lines) != 2:
+            raise ValueError("TLE must have exactly two lines")
+
+        line1, line2 = lines[0].rstrip(), lines[1].rstrip()
+        warnings = []
+
+        # Validate line length
+        if len(line1) < 69 or len(line2) < 69:
+            raise ValueError(f"Invalid line length: {len(line1)}, {len(line2)}")
+
+        # Validate line identifiers
+        if line1[0] != '1' or line2[0] != '2':
+            raise ValueError("Invalid line identifiers")
+
+        # Extract and validate satellite numbers
+        satnum1 = self._safe_int(line1[2:7])
+        satnum2 = self._safe_int(line2[2:7])
+        if satnum1 != satnum2:
+            raise ValueError(f"Satellite number mismatch: {satnum1} != {satnum2}")
+
+        # Validate checksums
+        if not self._verify_checksum(line1):
+            msg = "Line 1 checksum failed"
+            if self.strict:
+                raise ValueError(msg)
+            warnings.append(msg)
+
+        if not self._verify_checksum(line2):
+            msg = "Line 2 checksum failed"
+            if self.strict:
+                raise ValueError(msg)
+            warnings.append(msg)
+
+        # Parse Line 1 fields
+        classification = line1[7] if line1[7] != ' ' else 'U'
+        cospar = self._parse_cospar(line1[9:17])
+
+        epoch_year = self._parse_epoch_year(line1[18:20])
+        epoch_day = self._safe_float(line1[20:32])
+        first_deriv = self._safe_float(line1[33:43])
+        second_deriv = self._parse_exponent_field(line1[44:52])
+        bstar = self._parse_exponent_field(line1[53:61])
+        ephem_type = self._safe_int(line1[62:63], default=0)
+        elem_num = self._safe_int(line1[64:68])
+
+        # Parse Line 2 fields
+        inclination = self._safe_float(line2[8:16])
+        raan = self._safe_float(line2[17:25])
+        ecc = self._parse_eccentricity(line2[26:33])
+        arg_perigee = self._safe_float(line2[34:42])
+        mean_anomaly = self._safe_float(line2[43:51])
+        mean_motion = self._safe_float(line2[52:63])
+        rev_num = self._safe_int(line2[63:68])
+
+        # Validation
+        validation_warnings = self._validate_fields(
+            inclination, ecc, mean_motion, epoch_year, epoch_day
+        )
+        warnings.extend(validation_warnings)
+
+        tle = TLE(
+            satnum=satnum1,
+            classification=classification,
+            cospar=cospar,
+            epoch_year=epoch_year,
+            epoch_day=epoch_day,
+            first_deriv=first_deriv,
+            second_deriv=second_deriv,
+            bstar=bstar,
+            ephem_type=ephem_type,
+            elem_num=elem_num,
+            inclination=inclination,
+            raan=raan,
+            ecc=ecc,
+            arg_perigee=arg_perigee,
+            mean_anomaly=mean_anomaly,
+            mean_motion=mean_motion,
+            rev_num=rev_num
+        )
+
+        return tle, warnings
+
+    def _safe_int(self, s: str, default: int = 0) -> int:
+        """Safely parse integer field"""
+        s = s.strip()
+        if not s:
+            return default
+        try:
+            return int(s)
+        except ValueError:
+            return default
+
+    def _safe_float(self, s: str, default: float = 0.0) -> float:
+        """Safely parse float field"""
+        s = s.strip()
+        if not s:
+            return default
+        try:
+            return float(s)
+        except ValueError:
+            return default
+
+    def _parse_exponent_field(self, s: str) -> float:
+        """Parse exponential notation field (BSTAR, derivatives)"""
+        s = s.strip().replace(' ', '0')
+        if not s or s == '00000-0':
+            return 0.0
+
+        try:
+            # Extract mantissa and exponent
+            if len(s) >= 6:
+                mantissa_str = s[:5]
+                exp_sign = s[5] if len(s) > 5 else '+'
+                exp_digit = s[6] if len(s) > 6 else '0'
+
+                # Handle sign of mantissa
+                if mantissa_str[0] == '-':
+                    mantissa = -int(mantissa_str[1:]) / 1e5
+                elif mantissa_str[0] == '+':
+                    mantissa = int(mantissa_str[1:]) / 1e5
+                else:
+                    mantissa = int(mantissa_str) / 1e5
+
+                # Parse exponent
+                exponent = int(exp_digit) * (1 if exp_sign == '+' else -1)
+
+                return mantissa * (10 ** exponent)
+        except (ValueError, IndexError):
+            return 0.0
+
+        return 0.0
+
+    def _parse_eccentricity(self, s: str) -> float:
+        """Parse eccentricity with implied decimal"""
+        s = s.strip()
+        if not s:
+            return 0.0
+
+        try:
+            # Add implied decimal point
+            ecc = float('0.' + s)
+            if ecc >= 1.0:
+                raise ValueError(f"Invalid eccentricity: {ecc} >= 1.0")
+            return ecc
+        except ValueError as e:
+            if self.strict:
+                raise e
+            return 0.0
+
+    def _parse_epoch_year(self, s: str) -> int:
+        """Parse two-digit year with rollover rule"""
+        year_2d = self._safe_int(s)
+        # Rollover rule: if year < 57, add 2000; else add 1900
+        return 2000 + year_2d if year_2d < 57 else 1900 + year_2d
+
+    def _parse_cospar(self, s: str) -> Optional[str]:
+        """Parse COSPAR designator"""
+        # Extract year, launch number, and piece
+        year_str = s[0:2].strip()
+        launch_str = s[2:5].strip()
+        piece_str = s[5:8].strip()
+
+        if not year_str or not launch_str:
+            return None
+
+        # Convert year
+        if year_str:
+            year_int = int(year_str)
+            full_year = 2000 + year_int if year_int < 57 else 1900 + year_int
+        else:
+            return None
+
+        # Format as standard COSPAR
+        piece = piece_str.upper() if piece_str else 'A'
+        return f"{full_year}-{launch_str.zfill(3)}{piece}"
+
+    def _verify_checksum(self, line: str) -> bool:
+        """Verify TLE checksum"""
+        checksum = 0
+        for char in line[:68]:
+            if char.isdigit():
+                checksum += int(char)
+            elif char == '-':
+                checksum += 1
+            # '+', space, period contribute 0
+
+        expected = checksum % 10
+        actual = int(line[68])
+        return expected == actual
+
+    def _validate_fields(self, inclination: float, ecc: float,
+                        mean_motion: float, epoch_year: int,
+                        epoch_day: float) -> List[str]:
+        """Validate parsed fields and return warnings"""
+        warnings = []
+
+        # Inclination range
+        if not (0.0 <= inclination <= 180.0):
+            warnings.append(f"Inclination out of range: {inclination}°")
+
+        # Near-singular inclinations
+        if inclination < 0.1 or abs(inclination - 180.0) < 0.1:
+            warnings.append(f"Near-singular inclination: {inclination}°")
+
+        # Eccentricity already validated in parsing
+        if ecc > 0.9:
+            warnings.append(f"Very high eccentricity: {ecc}")
+
+        # Mean motion and derived orbital altitude
+        if mean_motion <= 0:
+            warnings.append("Invalid mean motion: $\leq 0$")
+        elif mean_motion > 20:
+            warnings.append(f"Extremely high mean motion: {mean_motion}")
+
+        # Compute semi-major axis for altitude check
+        if mean_motion > 0:
+            mu_wgs72 = 3.986005e14  # m³/s²
+            n_rad_per_sec = mean_motion * 2 * 3.14159 / 86400
+            semi_major_axis = (mu_wgs72 / (n_rad_per_sec ** 2)) ** (1/3)
+            altitude_km = (semi_major_axis / 1000) - 6378.135  # WGS-72 Earth radius
+
+            if altitude_km < 100:
+                warnings.append(f"Very low altitude: {altitude_km:.1f} km, likely decayed")
+
+        # Epoch validation
+        if epoch_year < 1957:
+            warnings.append(f"Pre-space-age epoch: {epoch_year}")
+
+        if not (1.0 <= epoch_day <= 366.999):
+            warnings.append(f"Invalid day of year: {epoch_day}")
+
+        return warnings
+
+# Usage example
+def main():
+    parser = TLEParser(strict=False)  # Lenient mode
+
+    tle_lines = [
+        "1 25544U 98067A   08264.51782528 -.00002182  00000-0 -11606-4 0  2927",
+        "2 25544  51.6461 339.7939 0001393  83.6287 276.5127 15.72125391563537"
+    ]
+
+    try:
+        tle, warnings = parser.parse_tle(tle_lines)
+        print(f"Parsed TLE for satellite {tle.satnum}")
+        print(f"Epoch: {tle.epoch_year}-{tle.epoch_day:.8f}")
+        print(f"Inclination: {tle.inclination:.4f}°")
+
+        if warnings:
+            print("Warnings:")
+            for warning in warnings:
+                print(f"  - {warning}")
+
+    except ValueError as e:
+        print(f"Parse error: {e}")
+
+if __name__ == "__main__":
+    main()
+```
+
+### C++ Implementation (Core Functions)
+
+```cpp
+#include <string>
+#include <vector>
+#include <stdexcept>
+#include <sstream>
+#include <cmath>
+
+struct TLE {
+    int satnum;
+    char classification;
+    std::string cospar;
+    int epoch_year;
+    double epoch_day;
+    double first_deriv;
+    double second_deriv;
+    double bstar;
+    int ephem_type;
+    int elem_num;
+    double inclination;
+    double raan;
+    double eccentricity;
+    double arg_perigee;
+    double mean_anomaly;
+    double mean_motion;
+    int rev_num;
+};
+
+class TLEParser {
+private:
+    bool strict_mode;
+
+public:
+    TLEParser(bool strict = false) : strict_mode(strict) {}
+
+    std::pair<TLE, std::vector<std::string>> parseTLE(
+        const std::string& line1,
+        const std::string& line2) {
+
+        std::vector<std::string> warnings;
+
+        // Validate input
+        if (line1.length() < 69 || line2.length() < 69) {
+            throw std::runtime_error("Invalid line length");
+        }
+
+        if (line1[0] != '1' || line2[0] != '2') {
+            throw std::runtime_error("Invalid line identifiers");
+        }
+
+        // Verify checksums
+        if (!verifyChecksum(line1)) {
+            if (strict_mode) {
+                throw std::runtime_error("Line 1 checksum failed");
+            }
+            warnings.push_back("Line 1 checksum failed");
+        }
+
+        if (!verifyChecksum(line2)) {
+            if (strict_mode) {
+                throw std::runtime_error("Line 2 checksum failed");
+            }
+            warnings.push_back("Line 2 checksum failed");
+        }
+
+        TLE tle;
+
+        // Parse satellite numbers and verify match
+        tle.satnum = std::stoi(line1.substr(2, 5));
+        int satnum2 = std::stoi(line2.substr(2, 5));
+        if (tle.satnum != satnum2) {
+            throw std::runtime_error("Satellite number mismatch");
+        }
+
+        // Parse Line 1 fields
+        tle.classification = line1[7];
+        tle.cospar = parseCOSPAR(line1.substr(9, 8));
+        tle.epoch_year = parseEpochYear(line1.substr(18, 2));
+        tle.epoch_day = std::stod(line1.substr(20, 12));
+        tle.first_deriv = parseFloat(line1.substr(33, 10));
+        tle.second_deriv = parseExponentField(line1.substr(44, 8));
+        tle.bstar = parseExponentField(line1.substr(53, 8));
+        tle.ephem_type = std::stoi(line1.substr(62, 1));
+        tle.elem_num = std::stoi(line1.substr(64, 4));
+
+        // Parse Line 2 fields
+        tle.inclination = std::stod(line2.substr(8, 8));
+        tle.raan = std::stod(line2.substr(17, 8));
+        tle.eccentricity = parseEccentricity(line2.substr(26, 7));
+        tle.arg_perigee = std::stod(line2.substr(34, 8));
+        tle.mean_anomaly = std::stod(line2.substr(43, 8));
+        tle.mean_motion = std::stod(line2.substr(52, 11));
+        tle.rev_num = std::stoi(line2.substr(63, 5));
+
+        // Validation
+        validateFields(tle, warnings);
+
+        return {tle, warnings};
+    }
+
+private:
+    bool verifyChecksum(const std::string& line) {
+        int sum = 0;
+        for (size_t i = 0; i < 68; ++i) {
+            char c = line[i];
+            if (std::isdigit(c)) {
+                sum += c - '0';
+            } else if (c == '-') {
+                sum += 1;
+            }
+        }
+
+        int expected = sum % 10;
+        int actual = line[68] - '0';
+        return expected == actual;
+    }
+
+    double parseExponentField(const std::string& field) {
+        if (field.empty() || field.find_first_not_of(' ') == std::string::npos) {
+            return 0.0;
+        }
+
+        std::string s = field;
+        // Replace spaces with zeros for parsing
+        std::replace(s.begin(), s.end(), ' ', '0');
+
+        if (s.length() < 6) return 0.0;
+
+        // Extract mantissa (first 5 chars) and exponent
+        double mantissa = std::stoi(s.substr(0, 5)) / 1e5;
+        char exp_sign = s[5];
+        int exponent = std::stoi(s.substr(6, 1));
+
+        if (exp_sign == '-') exponent = -exponent;
+
+        return mantissa * std::pow(10, exponent);
+    }
+
+    double parseEccentricity(const std::string& field) {
+        if (field.empty()) return 0.0;
+
+        double ecc = std::stod("0." + field);
+        if (ecc >= 1.0) {
+            throw std::runtime_error("Invalid eccentricity $\geq 1.0$");
+        }
+        return ecc;
+    }
+
+    int parseEpochYear(const std::string& field) {
+        int year_2d = std::stoi(field);
+        return (year_2d < 57) ? 2000 + year_2d : 1900 + year_2d;
+    }
+
+    std::string parseCOSPAR(const std::string& field) {
+        // Implementation for COSPAR parsing
+        return field; // Simplified
+    }
+
+    double parseFloat(const std::string& field) {
+        try {
+            return std::stod(field);
+        } catch (const std::exception&) {
+            return 0.0;
+        }
+    }
+
+    void validateFields(const TLE& tle, std::vector<std::string>& warnings) {
+        // Inclination validation
+        if (tle.inclination < 0.0 || tle.inclination > 180.0) {
+            warnings.push_back("Inclination out of valid range");
+        }
+
+        // Mean motion validation
+        if (tle.mean_motion <= 0.0) {
+            warnings.push_back("Invalid mean motion");
+        }
+
+        // Additional validations...
+    }
+};
+```
+
+## Algorithm Reference
+
+### Checksum Algorithm
+
+```python
+def compute_checksum(line: str) -> int:
+    """
+    Compute TLE checksum according to STR#3 specification
+
+    Rules:
+    - Sum columns 1-68 (0-based: 0-67)
+    - Digits: face value
+    - Minus (-): value 1
+    - Plus (+): value 0
+    - Space, period: value 0
+    - Return sum modulo 10
+    """
+    checksum = 0
+    for i in range(68):  # Columns 1-68 (0-based)
+        char = line[i]
+        if char.isdigit():
+            checksum += int(char)
+        elif char == '-':
+            checksum += 1
+        # '+', ' ', '.' contribute 0
+
+    return checksum % 10
+
+# Example usage
+line = "1 25544U 98067A   08246.91782528 -.00002182  00000-0 -11606-4 0  2927"
+computed = compute_checksum(line)
+provided = int(line[68])
+print(f"Computed: {computed}, Provided: {provided}, Match: {computed == provided}")
+```
+
+### Semi-major Axis Calculation
+
+```python
+def compute_semi_major_axis(mean_motion_rev_per_day: float) -> float:
+    """
+    Compute semi-major axis from mean motion using WGS-72 constants
+
+    Args:
+        mean_motion_rev_per_day: Mean motion in revolutions per day
+
+    Returns:
+        Semi-major axis in meters
+    """
+    # WGS-72 gravitational parameter
+    MU_WGS72 = 3.986005e14  # m³/s²
+
+    # Convert to radians per second
+    n_rad_per_sec = mean_motion_rev_per_day * 2 * math.pi / 86400
+
+    # Kepler's third law: a³ = μ/n²
+    semi_major_axis = (MU_WGS72 / (n_rad_per_sec ** 2)) ** (1/3)
+
+    return semi_major_axis
+
+def compute_altitude(semi_major_axis_m: float) -> float:
+    """Compute altitude above Earth surface using WGS-72 Earth radius"""
+    EARTH_RADIUS_WGS72 = 6378135.0  # meters
+    return semi_major_axis_m - EARTH_RADIUS_WGS72
+```
+
+## Testing Framework
+
+### Unit Test Structure
+
+```python
+import unittest
+from tle_parser import TLEParser
+
+class TestTLEParser(unittest.TestCase):
+
+    def setUp(self):
+        self.parser_strict = TLEParser(strict=True)
+        self.parser_lenient = TLEParser(strict=False)
+
+    def test_valid_tle(self):
+        """Test parsing of valid TLE"""
+        lines = [
+            "1 25544U 98067A   08264.51782528 -.00002182  00000-0 -11606-4 0  2927",
+            "2 25544  51.6461 339.7939 0001393  83.6287 276.5127 15.72125391563537"
+        ]
+
+        tle, warnings = self.parser_lenient.parse_tle(lines)
+
+        self.assertEqual(tle.satnum, 25544)
+        self.assertEqual(tle.classification, 'U')
+        self.assertEqual(len(warnings), 0)
+
+    def test_checksum_failure_strict(self):
+        """Test checksum failure in strict mode"""
+        lines = [
+            "1 25544U 98067A   08264.51782528 -.00002182  00000-0 -11606-4 0  2920",  # Wrong checksum
+            "2 25544  51.6461 339.7939 0001393  83.6287 276.5127 15.72125391563537"
+        ]
+
+        with self.assertRaises(ValueError):
+            self.parser_strict.parse_tle(lines)
+
+    def test_checksum_failure_lenient(self):
+        """Test checksum failure in lenient mode"""
+        lines = [
+            "1 25544U 98067A   08264.51782528 -.00002182  00000-0 -11606-4 0  2920",  # Wrong checksum
+            "2 25544  51.6461 339.7939 0001393  83.6287 276.5127 15.72125391563537"
+        ]
+
+        tle, warnings = self.parser_lenient.parse_tle(lines)
+        self.assertGreater(len(warnings), 0)
+        self.assertIn("checksum", warnings[0].lower())
+
+if __name__ == '__main__':
+    unittest.main()
+```
+
+## Performance Optimization
+
+### Parsing Optimizations
+
+1. **Pre-compile regular expressions** for field extraction
+2. **Use string slicing** instead of regex for fixed positions
+3. **Cache computed values** like semi-major axis
+4. **Batch processing** for multiple TLEs
+5. **Memory pooling** for TLE objects
+
+### Validation Optimizations
+
+1. **Early exit** on critical failures
+2. **Lazy validation** of expensive derived parameters
+3. **Lookup tables** for common validation ranges
+4. **Vectorized operations** for batch validation
+
+This implementation guide provides production-ready code examples and algorithms for robust TLE parsing with proper error handling and validation.

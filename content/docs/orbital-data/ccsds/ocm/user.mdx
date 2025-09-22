@@ -1,0 +1,41 @@
+---
+title: User-Defined Parameters
+description: Full field dictionary for OCM User-Defined Parameters (CCSDS 502.0-B-3, §6.2.11; Table 6‑12)
+outline: deep
+---
+
+
+# User-Defined Parameters
+
+## Purpose and scope
+This optional block allows exchange partners to include extra parameters not covered by the standard. Because it can introduce non‑standardization and processing risk, its use should be sparing and governed by an ICD between parties. At most one USER block may appear in an OCM.
+
+## Block keywords and order
+Delimited by:
+- USER_START (line by itself)
+- USER_STOP (line by itself)
+
+Within the block, KVN keys shall appear in the order below.
+
+## Fields
+
+| Field | Req | Type | Format/Enum | Units | Default | Description | Example | Notes |
+|-------|-----|------|-------------|-------|---------|-------------|---------|-------|
+| USER_START | Mandatory | delimiter | literal | n/a | n/a | Start of User‑Defined Parameters block. | USER_START |  |
+| COMMENT | Optional | text | comment | n/a | None | Comments immediately after USER_START. | COMMENT Custom items for operator ICD v2 |  |
+| USER_DEFINED_x | Mandatory | text/number | free text or numeric | per ICD | None | User-defined item; 'x' is replaced by a descriptive token. Any number of items permitted. | USER_DEFINED_EARTH_MODEL = WGS-84 | Names, types, units, and semantics must be documented in an ICD. |
+| USER_STOP | Mandatory | delimiter | literal | n/a | n/a | End of User‑Defined Parameters block. | USER_STOP |  |
+
+## Validation and constraints
+
+- Only one USER block per OCM.
+- Producers and consumers shall agree, via ICD, on:
+  - key names and ordering,
+  - data types, units, and valid ranges,
+  - processing/interpretation rules,
+  - security or sensitivity handling as applicable.
+
+## Cross-references
+
+- Consider replacing USER_DEFINED_x with standard fields whenever feasible.
+- Document all non-SANA enumerations and custom frames in the ICD (see Annex I guidance in the Blue Book).

@@ -1,0 +1,174 @@
+---
+title: Examples
+description: Worked mini-examples for OCM KVN and XML; trajectory, covariance, and maneuver duty cycle variants
+outline: deep
+---
+
+# Examples
+
+## Minimal KVN OCM (trajectory only)
+
+```
+CCSD_OCM_VERS = 3.0
+CREATION_DATE = 2024-120T14:32:00Z
+ORIGINATOR = GSFC
+META_START
+TIME_SYSTEM = UTC
+EPOCH_TZERO = 2024-120T14:30:00Z
+META_STOP
+TRAJ_START
+CENTER_NAME = EARTH
+TRAJ_REF_FRAME = ICRF3
+TRAJ_TYPE = CARTPV
+0.0 7000.0 0.0 0.0 0.0 7.5 0.0
+60.0 6997.5 7.5 0.0 -0.006 7.5 0.0
+TRAJ_STOP
+```
+
+## Covariance variants (N=3 for brevity)
+
+- LTM (elements after time: [1,1], [2,1], [2,2], [3,1], [3,2], [3,3]):
+
+```
+COV_START
+COV_REF_FRAME = ICRF3
+COV_TYPE = CARTP   /* illustrative 3x3 */
+COV_ORDERING = LTM
+0.0 1.0E-3 0.0 1.0E-3 0.0 0.0 1.0E-3
+COV_STOP
+```
+
+- UTM:
+
+```
+COV_START
+COV_REF_FRAME = ICRF3
+COV_TYPE = CARTP
+COV_ORDERING = UTM
+0.0 1.0E-3 0.0 0.0 1.0E-3 0.0 1.0E-3
+COV_STOP
+```
+
+- FULL:
+
+```
+COV_START
+COV_REF_FRAME = ICRF3
+COV_TYPE = CARTP
+COV_ORDERING = FULL
+0.0 1.0E-3 0.0 0.0 0.0 1.0E-3 0.0 0.0 1.0E-3
+COV_STOP
+```
+
+- LTMWCC (illustrative):
+
+```
+COV_START
+COV_REF_FRAME = ICRF3
+COV_TYPE = CARTP
+COV_ORDERING = LTMWCC
+0.0 1.0E-3 0.1 0.1 1.0E-3 0.1 1.0E-3
+COV_STOP
+```
+
+- UTMWCC:
+
+```
+COV_START
+COV_REF_FRAME = ICRF3
+COV_TYPE = CARTP
+COV_ORDERING = UTMWCC
+0.0 1.0E-3 0.1 0.1 0.1 1.0E-3 0.1 0.1 1.0E-3
+COV_STOP
+```
+
+## Maneuver duty cycles
+
+- TIME-based duty cycle (pulsed thrust every 20 s, 10 s ON):
+
+```
+MAN_START
+MAN_ID = SK_PULSES
+MAN_DEVICE_ID = THR_01
+MAN_REF_FRAME = RSW_ROTATING
+DC_TYPE = TIME
+DC_WIN_OPEN = 0.0
+DC_EXEC_START = 100.0
+DC_EXEC_STOP = 300.0
+DC_WIN_CLOSE = 400.0
+DC_REF_TIME = 100.0
+DC_TIME_PULSE_DURATION = 10.0
+DC_TIME_PULSE_PERIOD = 20.0
+MAN_COMPOSITION = TIME_RELATIVE, MAN_DURA, THR_X, THR_Y, THR_Z, THR_ISP, THR_EFFIC, THR_INTERP
+MAN_UNITS = [s, s, N, N, N, s, n/a, n/a]
+100.0 10.0 0.0 0.5 0.0 300.0 0.95 ON
+120.0 10.0 0.0 0.5 0.0 300.0 0.95 ON
+140.0 10.0 0.0 0.5 0.0 300.0 0.95 ON
+MAN_STOP
+```
+
+- TIME_AND_ANGLE duty cycle:
+
+```
+MAN_START
+MAN_ID = SPIN_PULSES
+MAN_DEVICE_ID = THR_02
+MAN_REF_FRAME = RSW_ROTATING
+DC_TYPE = TIME_AND_ANGLE
+DC_WIN_OPEN = 0.0
+DC_EXEC_START = 50.0
+DC_EXEC_STOP = 200.0
+DC_WIN_CLOSE = 210.0
+DC_REF_TIME = 0.0
+DC_TIME_PULSE_DURATION = 5.0
+DC_TIME_PULSE_PERIOD = 30.0
+DC_REF_DIR = 1.0 0.0 0.0
+DC_BODY_FRAME = SC_BODY_1
+DC_BODY_TRIGGER = 0.707 0.0 0.707
+DC_PA_START_ANGLE = 25.0
+DC_PA_STOP_ANGLE = 35.0
+MAN_COMPOSITION = TIME_RELATIVE, MAN_DURA, THR_X, THR_Y, THR_Z
+MAN_UNITS = [s, s, N, N, N]
+50.0 5.0 0.0 0.3 0.0
+80.0 5.0 0.0 0.3 0.0
+110.0 5.0 0.0 0.3 0.0
+MAN_STOP
+```
+
+## XML snippet (trajectory + maneuver)
+
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<ocm xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:noNamespaceSchemaLocation="https://sanaregistry.org/r/ndmxml_unqualified/ndmxml-3.0.0-master-3.0.xsd"
+     id="CCSDS_OCM_VERS" version="3.0">
+  <header>
+    <CREATION_DATE>2024-120T14:32:00Z</CREATION_DATE>
+    <ORIGINATOR>GSFC</ORIGINATOR>
+  </header>
+  <body><segment>
+    <metadata>
+      <TIME_SYSTEM>UTC</TIME_SYSTEM>
+      <EPOCH_TZERO>2024-120T14:30:00Z</EPOCH_TZERO>
+    </metadata>
+    <data>
+      <traj>
+        <CENTER_NAME>EARTH</CENTER_NAME>
+        <TRAJ_REF_FRAME>ICRF3</TRAJ_REF_FRAME>
+        <TRAJ_TYPE>CARTPV</TRAJ_TYPE>
+        <TRAJ_UNITS>[km,km,km,km/s,km/s,km/s]</TRAJ_UNITS>
+        <trajLine>0.0 7000 0 0 0 7.5 0</trajLine>
+      </traj>
+      <man>
+        <MAN_ID>IMPULSE</MAN_ID>
+        <MAN_DEVICE_ID>ALL</MAN_DEVICE_ID>
+        <MAN_REF_FRAME>TNW_INERTIAL</MAN_REF_FRAME>
+        <DC_TYPE>CONTINUOUS</DC_TYPE>
+        <MAN_COMPOSITION>TIME_RELATIVE, MAN_DURA, DV_X, DV_Y, DV_Z</MAN_COMPOSITION>
+        <MAN_UNITS>[s, s, km/s, km/s, km/s]</MAN_UNITS>
+        <manLine>120.0 0.0 0.005 0.000 0.000</manLine>
+      </man>
+    </data>
+  </segment></body>
+</ocm>
+```

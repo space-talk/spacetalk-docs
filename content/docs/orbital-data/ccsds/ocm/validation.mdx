@@ -1,0 +1,93 @@
+---
+title: Validation and ingest
+description: Structural, syntactic, and semantic validation checklist for OCM; common edge cases and recommended handling
+outline: deep
+---
+
+# Validation and ingest checklist
+
+This checklist groups validations into structural, syntactic, and semantic layers for reliable ingestion of OCM KVN (and by extension, XML).
+
+## Structural
+
+- File order
+  - Header present and first non-blank line.
+  - One metadata block delimited by META_START/META_STOP.
+  - Optional data sections appear only in this order: TRAJ, PHYS, COV, MAN, PERT, OD, USER.
+- Repeatability
+  - TRAJ: 0..N; COV: 0..N; MAN: 0..N.
+  - PHYS: 0..1; PERT: 0..1; OD: 0..1; USER: 0..1.
+- Section delimiters
+  - Each repeatable section must be enclosed by *_START/*_STOP lines (alone on their lines).
+
+## Syntactic
+
+- Lines and characters
+  - ASCII printable only; no TABs; allowed line terminators per standard.
+- KVN rules
+  - One key=value per line; no commas in vector values; keys uppercase.
+  - Keyword order in each block matches the standard tables.
+- Comments
+  - `COMMENT` lines only where permitted (header after version; at top of each section after *_START).
+- Numbers
+  - Integer and floating formatting per §7.5; ≤16 significant digits.
+- Time
+  - Absolute times validate against CCSDS A/B; CREATION_DATE is UTC; EPOCH_TZERO defined and used for relative times.
+
+## Semantic
+
+- Metadata
+  - Mandatory: TIME_SYSTEM, EPOCH_TZERO.
+  - If TIME_SYSTEM=SCLK, both SCLK_OFFSET_AT_EPOCH and SCLK_SEC_PER_SI_SEC present; EPOCH_TZERO interpreted in UTC.
+  - Enumerations drawn from SANA registries (time systems, frames, centers, element/covariance types).
+- Trajectory blocks
+  - CENTER_NAME, TRAJ_REF_FRAME, TRAJ_TYPE present.
+  - TRAJ_FRAME_EPOCH present if required by frame definition.
+  - Within a block, timetags are all absolute or all relative, strictly increasing, no duplicates.
+  - Data-line element count matches TRAJ_TYPE.
+- Covariance blocks
+  - COV_REF_FRAME, COV_TYPE, COV_ORDERING present.
+  - Data-line element count consistent with N and ordering (LTM/UTM: (N²+N)/2; FULL: N²; SIG3EIGVEC3: 13; TSIG3EIGVEC3: 14).
+  - Matrices are positive semi-definite (PSD).
+- Maneuver blocks
+  - MAN_ID, MAN_DEVICE_ID, MAN_REF_FRAME, DC_TYPE, MAN_COMPOSITION present.
+  - MAN_COMPOSITION elements are all from propulsive set or all from deployment set; exactly one time field.
+  - If DC_TYPE ≠ CONTINUOUS, required DC_* keys present; for TIME_AND_ANGLE include DC_REF_DIR, DC_BODY_FRAME, DC_BODY_TRIGGER, DC_PA_START_ANGLE, DC_PA_STOP_ANGLE.
+  - DELTA_MASS ≤ 0 for propellant consumption; DEPLOY_MASS ≤ 0 and DEPLOY_DV_RATIO typically ≤ 0 (host opposite).
+- PHYS block
+  - If any OEB_Q* present, OEB_PARENT_FRAME supplied (and epoch when required).
+- PERT block
+  - Gravity model degree/order formatted "name + `\d{2}D : \d{2}O`" when specified.
+- OD block
+  - OD_METHOD contains method and (preferably) tool.
+
+## Edge cases and handling
+
+- Mixed time modes
+  - Reject blocks that mix absolute and relative timetags.
+- Duplicate timetags
+  - Reject or coalesce with warning; the standard disallows duplicates within a block.
+- TEME frame in OCM
+  - Reject TEME in OCM; TEME is reserved for OMM/TLE contexts.
+- Excess precision
+  - Warn when mantissas exceed 16 significant digits; ingest after rounding.
+- Missing frame epoch
+  - If the frame requires an epoch and none is provided, reject; if intrinsic to the frame, it may be omitted.
+- Inconsistent COV_UNITS
+  - COV_UNITS is informational; it does not alter numeric values. Flag only if obviously inconsistent with chosen COV_TYPE.
+- Non‑PSD covariance
+  - Reject or quarantine with error; encourage producer correction.
+- SCLK timescale
+  - Verify both SCLK_* parameters and treat EPOCH_TZERO as UTC for SCLK interpretation.
+- Negative durations for maneuvers
+  - MAN_DURA must be ≥ 0; treat negative as invalid.
+
+## Ingest recommendations
+
+- Two‑pass parsing
+  1) Discover header/metadata; cache TIME_SYSTEM and EPOCH_TZERO.
+  2) Stream data sections, validating per-block rules; avoid regex for large data lines for performance—use tokenization.
+- Normalize times
+  - Convert absolute times to TAI or a high-precision internal epoch for computation; store relative values as double.
+- Numeric stability
+  - Retain producer precision up to 16 significant digits; avoid unnecessary reformatting on export.

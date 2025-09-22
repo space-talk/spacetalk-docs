@@ -1,0 +1,105 @@
+
+---
+title: OEM Metadata
+description: Field dictionary for CCSDS OEM Metadata (CCSDS 502.0-B-3, Table 5-3)
+outline: deep
+---
+
+# OEM Metadata
+
+## Purpose and scope
+
+This page enumerates all metadata items defined for an Orbit Ephemeris Message (OEM) segment. Each metadata block applies to the immediately following ephemeris data block and optional covariance block. Metadata defines the context (object, frame, time span) for interpolation.
+
+## Block keywords and order
+
+- A metadata block is delimited by fixed tokens:
+  - META_START
+  - metadata keyword assignments in fixed order (7.4.8; [Table 5-3](#fields))
+  - META_STOP
+- One metadata block precedes each ephemeris block (5.2.3.3).
+- Comments are allowed only immediately after META_START (7.8.9).
+- Multiple segments allowed for discontinuities (e.g., maneuvers); each has its own metadata.
+
+## Field table
+
+| Keyword | Description | Units | Default (if any) | Examples of Values | M/O/C |
+|---------|-------------|-------|------------------|--------------------|---------|
+| META_START | The OEM message contains metadata, ephemeris data, and covariance data; this keyword is used to indicate the start of a metadata block within the message | - | - | META_START | M |
+| COMMENT | Comments (a contiguous set of one or more COMMENT statements) | - | - | This is a comment | O |
+| OBJECT_NAME | Name of the space object | - | - | STS 106 | M |
+| OBJECT_ID | International designator or other identification of the space object | - | - | 2000-053A | M |
+| CENTER_NAME | Name of the center body or other reference frame origin | - | - | EARTH | M |
+| REF_FRAME | Reference frame in which the ephemeris is expressed | - | - | EME2000 | M |
+| REF_FRAME_EPOCH | Epoch at which the reference frame is defined | - | - | 2000-01-01T12:00:00 | C |
+| TIME_SYSTEM | Time scale used for all time tags in the message except CREATION_DATE | - | - | UTC | M |
+| START_TIME | Start time of the total time span covered by the ephemeris data | - | - | 1996-12-18T14:28:15.1172 | M |
+| USEABLE_START_TIME | Start time of the useable time span covered by the ephemeris data | - | - | 1996-12-18T14:28:15.1172 | O |
+| USEABLE_STOP_TIME | Stop time of the useable time span covered by the ephemeris data | - | - | 1996-12-18T14:28:15.1172 | O |
+| STOP_TIME | Stop time of the total time span covered by the ephemeris data | - | - | 1996-12-18T14:28:15.1172 | M |
+| INTERPOLATION | Recommended interpolation method | - | - | HERMITE | O |
+| INTERPOLATION_DEGREE | Recommended interpolation degree | - | - | 7 | C |
+| META_STOP | This keyword is used to indicate the end of a metadata block within the message | - | - | META_STOP | M |
+
+## Fields
+
+| Keyword | Requirement | Type | Format / Enum | Units | Default | Description | Constraints and validation | Cross-reference | Example |
+|---------|-------------|------|---------------|-------|---------|-------------|---------------------------|--------------------|---------|
+| META_START | Mandatory | fixed token | literal "META_START" | Forbidden | None | Begins a metadata block | Must appear on a line by itself | 5.2.3.3; 7.4.2 | META_START |
+| COMMENT | Optional | free text | KVN comment line | n/a | None | Explanatory notes for this segment | Only permitted immediately after META_START | 7.8.9 | COMMENT This is a comment. |
+| OBJECT_NAME | Mandatory | text | Space object name | Forbidden | None | Spacecraft/object name | If disclosure not possible, use "UNKNOWN". Max 32 chars recommended. | Table 5-3 note | OBJECT_NAME = STS 106 |
+| OBJECT_ID | Mandatory | text | Prefer UN `YYYY-NNNP\{PP\}` designator | Forbidden | None | Object identifier | If not known or undisclosable, "UNKNOWN" | Table 5-3; [3] | OBJECT_ID = 2000-053A |
+| CENTER_NAME | Mandatory | text | Natural body from SANA Orbit Centers; or another reference frame center (e.g., spacecraft chief) | Forbidden | None | Origin of the reference frame | Use SANA bodies for natural centers; free-text allowed for non-gravitational origins | Table 5-3; Annex B-B2 | CENTER_NAME = EARTH |
+| REF_FRAME | Mandatory | text | Value from SANA Celestial Body/Orbit-relative frames | Forbidden | None | Reference frame of the ephemeris | Do not use TEME for OEM unless explicitly agreed in an ICD; use standard inertial/body-fixed frames | Table 5-3; 3.2.3.3; Annex B-B4/B5 | REF_FRAME = EME2000 |
+| REF_FRAME_EPOCH | Conditional | time string | CCSDS Time A/B | Forbidden | None | Epoch for time-dependent frames | Required if frame epoch is not intrinsic; otherwise omit. Parse per 7.5.10. | Table 5-3; 7.5.10 | REF_FRAME_EPOCH = 2002-204T15:56:23Z |
+| TIME_SYSTEM | Mandatory | text | From SANA Time Systems (UTC, TAI, TT, TDB, TCB, etc.) | Forbidden | None | Time system for all epochs in this segment (except CREATION_DATE) | TIME_SYSTEM must remain fixed across the entire OEM (file-wide). SCLK requires ICD. | Table 5-3; 5.2.4.5; 7.5.11; Annex B-B3 | TIME_SYSTEM = UTC |
+| START_TIME | Mandatory | time string | CCSDS Time A/B | Forbidden | None | Start of the TOTAL time span covered by the following data | Must be ≤ first ephemeris epoch | Table 5-3; 7.5.10 | START_TIME = 1996-12-18T14:28:15.1172 |
+| USEABLE_START_TIME | Optional | time string | CCSDS Time A/B | Forbidden | Full span | Start of the USEABLE interpolation span | If omitted, the useable span starts at START_TIME; must be within [START_TIME, STOP_TIME]. No overlap between segments except endpoints. | Table 5-3; 7.5.10 | USEABLE_START_TIME = 1996-12-18T14:28:15.1172 |
+| USEABLE_STOP_TIME | Optional | time string | CCSDS Time A/B | Forbidden | Full span | Stop of the USEABLE interpolation span | If omitted, the useable span ends at STOP_TIME; must be within [START_TIME, STOP_TIME] | Table 5-3; 7.5.10 | USEABLE_STOP_TIME = 1996-12-28T21:23:00.331 |
+| STOP_TIME | Mandatory | time string | CCSDS Time A/B | Forbidden | None | End of the TOTAL time span covered by the following data | Must be ≥ last ephemeris epoch | Table 5-3; 7.5.10 | STOP_TIME = 1996-12-28T21:28:00.331 |
+| INTERPOLATION | Optional | text | HERMITE, LINEAR, LAGRANGE | Forbidden | None | Recommended interpolation method | If present, INTERPOLATION_DEGREE is required; applies to this ephemeris block. Ensure ≥ degree+1 nodes. | Table 5-3; 5.2.4.7 | INTERPOLATION = LAGRANGE |
+| INTERPOLATION_DEGREE | Conditional | integer | ≥ 1 | Forbidden | None | Recommended polynomial degree | Mandatory if INTERPOLATION is given; data must contain enough nodes | Table 5-3; 5.2.4.7 | INTERPOLATION_DEGREE = 5 |
+| META_STOP | Mandatory | fixed token | literal "META_STOP" | Forbidden | None | Ends a metadata block | Must appear on a line by itself, after metadata and before ephemeris lines | 5.2.3.3; 7.4.2 | META_STOP |
+
+## Validation rules specific to metadata
+
+- Ordering: keywords must appear in the fixed order shown above (7.4.8; [Table 5-3](#fields)).
+- START_TIME ≤ first ephemeris epoch ≤ last ephemeris epoch ≤ STOP_TIME.
+- USEABLE_* must lie within [START_TIME, STOP_TIME]. For consecutive segments, USEABLE windows must not overlap except at a shared endpoint (5.2.4.4).
+- TIME_SYSTEM must be constant across the entire OEM (5.2.4.5). CREATION_DATE in the header is always UTC (7.5.11).
+- Leap second seconds value "60" is valid in time strings (7.5.10).
+- All M fields mandatory; REF_FRAME_EPOCH conditional on frame (Item 8-14 in A2.5.3).
+
+## Edge cases and handling
+
+- Unknown IDs: use "UNKNOWN" for OBJECT_NAME/OBJECT_ID when data cannot be disclosed ([Table 5-3](#fields) note).
+- Non-natural centers: CENTER_NAME may be a spacecraft or other origin; document clearly if not gravitational and avoid propagating between centers.
+- TEME frame: the Blue Book indicates TEME is for OMM/TLE; avoid TEME in OEM unless governed by an ICD.
+- SCLK time systems: require an ICD that defines correlation to UTC, partition handling, and epoch (Annex B-B3; Annex I).
+- Max one COMMENT block per META_START.
+
+## Cross-references
+
+- Full OEM structure: 5.2.3
+- SANA registries: Annex B
+
+### Multi-segment metadata:
+
+```
+META_START
+OBJECT_NAME = MARS GLOBAL SURVEYOR
+OBJECT_ID = 1996-062A
+CENTER_NAME = MARS BARYCENTER
+REF_FRAME = EME2000
+TIME_SYSTEM = UTC
+START_TIME = 2019-12-28T21:29:07.267
+STOP_TIME = 2019-12-30T01:28:02.267
+INTERPOLATION = HERMITE
+INTERPOLATION_DEGREE = 7
+META_STOP
+... ephemeris ...
+META_START
+OBJECT_NAME = MARS GLOBAL SURVEYOR
+... (updated times)
+META_STOP
+```

@@ -1,0 +1,114 @@
+---
+title: Maneuver Specification
+description: Full field dictionary for OCM maneuver sections (CCSDS 502.0-B-3, §6.2.8; Table 6‑7, 6‑8, 6‑9)
+outline: deep
+---
+
+
+# Maneuver Specification
+
+## Purpose and scope
+A maneuver block describes a time history of propulsive activity or deployments. It supports impulsive ΔV, finite thrust (including duty cycles), direct acceleration profiles, and host/child deployment kinematics. Multiple blocks may appear (e.g., different devices, frames, or overlapping intervals).
+
+## Block keywords and order
+Delimited by:
+- MAN_START (line by itself)
+- MAN_STOP (line by itself)
+
+Within the block, metadata KVN keys shall appear in the order below, followed by one or more non-KVN maneuver data lines defined by MAN_COMPOSITION, then MAN_STOP.
+
+## Fields
+
+| Field | Req | Type | Format/Enum | Units | Default | Description | Example | Notes |
+|-------|-----|------|-------------|-------|---------|-------------|---------|-------|
+| MAN_START | Mandatory | delimiter | literal | n/a | n/a | Start of a maneuver section. | MAN_START |  |
+| COMMENT | Optional | text | comment | n/a | None | Comments immediately after MAN_START. | COMMENT Disposal burn sequence |  |
+| MAN_ID | Mandatory | text | free text | n/a | None | Unique identifier for this maneuver (within message context). | `E_W_20160305B` |  |
+| MAN_PREV_ID | Optional | text | free text | n/a | None | Previous maneuver in this sequence. | `E_W_20160305A` |  |
+| MAN_NEXT_ID | Optional | text | free text | n/a | None | Next maneuver in this sequence. | `E_W_20160305C` |  |
+| MAN_BASIS | Optional | enum/text | CANDIDATE, PLANNED, ANTICIPATED, TELEMETRY, DETERMINED, SIMULATED, OTHER | n/a | None | Basis of this maneuver. | TELEMETRY |  |
+| MAN_BASIS_ID | Optional | text | free text | n/a | None | Basis ID (e.g., OD_ID, nav soln, sim run). | `OD_20181122A` |  |
+| MAN_DEVICE_ID | Mandatory | text | free text | n/a | None | Identifier of the device used (e.g., THR_01). Special values: ALL (aggregate thrust), DEPLOY (deployment-only block). | `THR_02` |  |
+| MAN_PREV_EPOCH | Optional | time/rel | CCSDS A/B or relative | n/a | None | Completion time of the previous maneuver for this basis. | `50.0` |  |
+| MAN_NEXT_EPOCH | Optional | time/rel | CCSDS A/B or relative | n/a | None | Start time of the next maneuver for this basis. | `2001-11-06T11:17:33Z` |  |
+| MAN_PURPOSE | Optional | list | comma-delimited purposes | n/a | None | Purpose(s) (e.g., ORBIT, SK, COLA, DEPLOY, DISPOSAL, PRM_ID_xxxx, etc.). | DISPOSAL | Free text with recommended vocabulary. |
+| MAN_PRED_SOURCE | Optional | text | free text | n/a | None | Source of the predicted states used to design the maneuver. | OD_5 |  |
+| MAN_REF_FRAME | Mandatory | enum | /refs/enums-formats-units#frames | n/a | None | Reference frame for vector directions in this block. | TNW_INERTIAL | All data elements within the block use this frame. |
+| MAN_FRAME_EPOCH | Conditional | time | CCSDS A/B | n/a | None | Frame epoch if not intrinsic. | 2002-204T15:56:23Z | Required if needed by chosen frame. |
+| GRAV_ASSIST_NAME | Optional | enum | /refs/enums-formats-units#centers | n/a | None | Name of gravitational-assist body (if applicable). | EARTH |  |
+| DC_TYPE | Mandatory | enum | CONTINUOUS, TIME, TIME_AND_ANGLE | n/a | CONTINUOUS | Duty‑cycle type for this block. | TIME | Controls requirement of DC_* keys below. |
+| DC_WIN_OPEN | Conditional | time/rel | CCSDS A/B or relative | n/a | None | Duty-cycle maneuver window open. | 50.0 | Required if DC_TYPE ≠ CONTINUOUS. |
+| DC_WIN_CLOSE | Conditional | time/rel | CCSDS A/B or relative | n/a | None | Duty-cycle maneuver window close. | 100.0 | Required if DC_TYPE ≠ CONTINUOUS. |
+| DC_MIN_CYCLES | Optional | integer | scalar | n/a | None | Minimum number of ON cycles (may override DC_EXEC_STOP). | 5 |  |
+| DC_MAX_CYCLES | Optional | integer | scalar | n/a | None | Maximum number of ON cycles (may override DC_EXEC_STOP). | 200 |  |
+| DC_EXEC_START | Conditional | time/rel | CCSDS A/B or relative | n/a | None | Start of executed duty-cycle sequence (on/after first ON). | 50.0 | Required if DC_TYPE ≠ CONTINUOUS. |
+| DC_EXEC_STOP | Conditional | time/rel | CCSDS A/B or relative | n/a | None | End of executed duty-cycle sequence (on/before last ON ends). | 100.0 | Required if DC_TYPE ≠ CONTINUOUS. |
+| DC_REF_TIME | Conditional | time/rel | CCSDS A/B or relative seconds | n/a | None | Reference time for TIME/TIME_AND_ANGLE duty cycles. | 8000.0 | Required if DC_TYPE ≠ CONTINUOUS. |
+| DC_TIME_PULSE_DURATION | Conditional | real | scalar | s | None | ON duration per pulse. | 10.0 | Required if DC_TYPE ≠ CONTINUOUS. |
+| DC_TIME_PULSE_PERIOD | Conditional | real | scalar | s | None | Period between pulse starts; ≥ duration. | 200.0 | Required if DC_TYPE ≠ CONTINUOUS. |
+| DC_REF_DIR | Conditional | vector(3) | numeric triple | n/a | None | Reference direction in MAN_REF_FRAME that triggers ON (TIME_AND_ANGLE). | 1.0 0.0 0.0 | Required if DC_TYPE = TIME_AND_ANGLE. Unitless direction vector. |
+| DC_BODY_FRAME | Conditional | enum | /refs/enums-formats-units#spacecraft-body-frames | n/a | None | Body frame used for DC_BODY_TRIGGER vector. | SC_BODY_1 | Required if DC_TYPE = TIME_AND_ANGLE. |
+| DC_BODY_TRIGGER | Conditional | vector(3) | numeric triple | n/a | None | Body-frame trigger direction. | 0.707 0.0 0.707 | Required if DC_TYPE = TIME_AND_ANGLE. |
+| DC_PA_START_ANGLE | Conditional | real | scalar | deg | None | Phase angle for pulse start relative to crossing of DC_REF_DIR. | 25.0 | Required if DC_TYPE = TIME_AND_ANGLE. |
+| DC_PA_STOP_ANGLE | Conditional | real | scalar | deg | None | Phase angle for pulse stop relative to crossing. | 35.0 | Required if DC_TYPE = TIME_AND_ANGLE. |
+| MAN_COMPOSITION | Mandatory | list | comma-delimited elements | n/a | None | Ordered list of data-line elements to follow each time tag. Choose all items from Table 6‑8 (propulsive) or all from Table 6‑9 (deployment). | TIME_RELATIVE, THR_X, THR_Y, THR_Z, THR_ISP | Do not mix propulsive and deployment fields in one block. Only one of TIME_ABSOLUTE or TIME_RELATIVE appears. |
+| MAN_UNITS | Optional | list | informational units string | n/a | None | Units corresponding to each element in MAN_COMPOSITION after the time tag. | [s,N,N,N,n/a,s] | Informational only; does not change numeric values. |
+| `\<maneuver data line\>` | Mandatory | data line | timetag + elements per MAN_COMPOSITION | implied | n/a | One or more lines with values in the declared order. | 500.0 0.0 0.5 0.0 300.0 | No unit strings inline. |
+| MAN_STOP | Mandatory | delimiter | literal | n/a | n/a | End of a maneuver section. | MAN_STOP |  |
+
+## Propulsive composition elements (Table 6‑8)
+
+Choose from (names are normalized to the standard):
+- TIME_ABSOLUTE or TIME_RELATIVE
+- MAN_DURA (s)
+- DELTA_MASS (kg; negative for mass loss)
+- ACC_X, ACC_Y, ACC_Z (km/s**2)
+- ACC_INTERP (ON/OFF)
+- ACC_MAG_SIGMA (%) and ACC_DIR_SIGMA (deg)
+- DV_X, DV_Y, DV_Z (km/s) — instantaneous at `Tstart + 0.5*MAN_DURA`
+- DV_MAG_SIGMA (%) and DV_DIR_SIGMA (deg)
+- THR_X, THR_Y, THR_Z (N)
+- THR_EFFIC (η; 0–1)
+- THR_INTERP (ON/OFF)
+- THR_ISP (s)
+- THR_MAG_SIGMA (%) and THR_DIR_SIGMA (deg)
+
+Notes
+- MAN_DURA = 0 denotes an impulsive maneuver.
+- For finite burns, DELTA_MASS should reflect propellant use and any payload ejections during the interval (rocket equation consistency left to the producer).
+
+## Deployment composition elements (Table 6‑9)
+
+Choose from:
+- TIME_ABSOLUTE or TIME_RELATIVE
+- DEPLOY_ID (child identifier; "0" indicates no deployment at that line)
+- DEPLOY_DV_X, DEPLOY_DV_Y, DEPLOY_DV_Z (child ΔV in MAN_REF_FRAME, km/s; applied at time tag)
+- DEPLOY_MASS (kg; decrement to host, ≤ 0)
+- DEPLOY_DV_SIGMA (%) and DEPLOY_DIR_SIGMA (deg)
+- DEPLOY_DV_RATIO (dimensionless; host-to-child ΔV ratio; typically ≤ 0 to indicate opposite ΔV on host)
+- DEPLOY_DV_CDA (m**2; child CD·A)
+
+## Section rules and semantics
+
+- All vectors are expressed in MAN_REF_FRAME (epoch MAN_FRAME_EPOCH if supplied).
+- Blocks using DC controls:
+  - If DC_TYPE = CONTINUOUS, no DC_* keys are required.
+  - If DC_TYPE = TIME or TIME_AND_ANGLE, supply the required DC_* subset. DC_MIN_CYCLES/DC_MAX_CYCLES may override DC_EXEC_STOP.
+- Interpolation of time-varying thrust/acceleration vectors (THR_INTERP/ACC_INTERP = ON) should use robust methods (e.g., Euler axis/angle; see Annex F).
+- Only one spacecraft object is addressed per maneuver block. For deployments, MAN_DEVICE_ID should be DEPLOY, and the lines specify child ΔV and host mass decrement.
+- Multiple blocks may share MAN_DEVICE_ID if time intervals do not overlap or represent different bases.
+
+## Validation checklist
+
+- Required keys present: MAN_ID, MAN_DEVICE_ID, MAN_REF_FRAME, DC_TYPE, MAN_COMPOSITION.
+- If DC_TYPE ≠ CONTINUOUS, required DC_* keys supplied; if TIME_AND_ANGLE, supply angular triggers and frames.
+- MAN_COMPOSITION elements are all from propulsive set or all from deployment set; includes exactly one time field (absolute or relative).
+- Data-line element count matches MAN_COMPOSITION; timetag mode is consistent within the block.
+- For ΔV impulses, apply at `Tstart + 0.5*MAN_DURA`. For mass changes: DELTA_MASS ≤ 0; DEPLOY_MASS ≤ 0; DEPLOY_DV_RATIO typically ≤ 0.
+
+## Cross-references
+
+- Frames and body frames → /refs/enums-formats-units
+- Duty-cycle diagrams and vector interpolation → Annex F in the standard
+- Global syntax/time rules → /ocm/common-syntax
+- Trajectory linkage across impulses → /ocm/trajectory

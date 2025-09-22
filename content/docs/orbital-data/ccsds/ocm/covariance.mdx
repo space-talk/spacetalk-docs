@@ -1,0 +1,81 @@
+---
+title: Covariance Time History
+description: Full field dictionary for OCM covariance sections (CCSDS 502.0-B-3, §6.2.7; Table 6‑6)
+outline: deep
+---
+
+
+# Covariance Time History
+
+## Purpose and scope
+A covariance block provides a time series (or a single epoch) of state uncertainty, expressed in a specified element set and reference frame. Multiple blocks may appear, e.g., different bases, frames, or element sets.
+
+## Block keywords and order
+Delimited by:
+- COV_START (line by itself)
+- COV_STOP (line by itself)
+
+Within the block, metadata KVN keys shall appear first in the order below, followed by one or more non-KVN covariance data lines, then COV_STOP.
+
+## Fields
+
+| Field | Req | Type | Format/Enum | Units | Default | Description | Example | Notes |
+|-------|-----|------|-------------|-------|---------|-------------|---------|-------|
+| COV_START | Mandatory | delimiter | literal | n/a | n/a | Start of a covariance time history section. | COV_START |  |
+| COMMENT | Optional | text | comment | n/a | None | Comments immediately after COV_START. | COMMENT Cartesian 6x6 LTM |  |
+| COV_ID | Optional | text | free text | n/a | None | Identifier for this covariance block. | COV_20160402_XYZ |  |
+| COV_PREV_ID | Optional | text | free text | n/a | None | Previous covariance block identifier. | COV_20160305A |  |
+| COV_NEXT_ID | Optional | text | free text | n/a | None | Next covariance block identifier. | COV_20160305C |  |
+| COV_BASIS | Optional | enum/text | PREDICTED, DETERMINED, EMPIRICAL, SIMULATED, OTHER | n/a | None | Basis of the covariance. | PREDICTED |  |
+| COV_BASIS_ID | Optional | text | free text | n/a | None | Basis identifier (e.g., OD_ID, solution ID). | OD_5910 |  |
+| COV_REF_FRAME | Mandatory | enum | /refs/enums-formats-units#frames | n/a | None | Reference frame for covariance interpretation. | TNW_INERTIAL |  |
+| COV_FRAME_EPOCH | Conditional | time | CCSDS A/B | n/a | EPOCH_TZERO | Epoch of the covariance frame if not intrinsic. | 2001-11-06T11:17:33Z |  |
+| COV_SCALE_MIN | Optional | real | scalar | n/a | None | Suggested lower scale factor for realism. | 0.5 |  |
+| COV_SCALE_MAX | Optional | real | scalar | n/a | None | Suggested upper scale factor for realism. | 5.0 |  |
+| COV_CONFIDENCE | Optional | real | percent or agreed metric | % | None | Confidence metric in covariance realism (e.g., Wald/χ²/log-likelihood). | 50 | ICD-defined semantics. |
+| COV_TYPE | Mandatory | enum | /refs/enums-formats-units#covariance-types | n/a | None | Covariance composition (e.g., CARTP, CARTPV, ADBARV, SIG3EIGVEC3, TSIG3EIGVEC3). | CARTPV | Dictates dimension N and interpretation. |
+| COV_ORDERING | Mandatory | enum | LTM, UTM, FULL, LTMWCC, UTMWCC | n/a | LTM | Ordering of matrix entries on each data line. | LTM | See Ordering rules below. |
+| COV_UNITS | Optional | list | informational units string | n/a | None | Units for the standard deviations (square roots of diagonal entries), in element order. | [km,km,km,km/s,km/s,km/s] | Informational only; does not change numeric values. |
+| `\<covariance data line\>` | Mandatory | data line | time + entries per COV_TYPE and COV_ORDERING | implied | n/a | One or more lines: timetag (absolute or relative) followed by covariance elements in the specified order. | 0.0 1e-3 0.0 1e-3 ... | No unit strings inline; see Ordering rules. |
+| COV_STOP | Mandatory | delimiter | literal | n/a | n/a | End of a covariance time history section. | COV_STOP |  |
+
+## Ordering rules (matrix serialization)
+
+Let N be the dimension of the covariance implied by COV_TYPE:
+- LTM: lower triangular matrix, row-wise: [1,1], [2,1], [2,2], [3,1], [3,2], [3,3], … total (N²+N)/2 entries.
+- UTM: upper triangular matrix, row-wise: [1,1], [1,2], [1,3], [2,2], [2,3], … total (N²+N)/2 entries.
+- FULL: full symmetric matrix row-wise; N² entries.
+- LTMWCC / UTMWCC: triangular matrix with off-triangle correlation coefficients replacing covariances in the complementary triangle as specified by the standard's Figures 6‑4/6‑5; total N² entries.
+
+For the special event-based types:
+- SIG3EIGVEC3: timetag + 3 dispersions (σx, σy, σz) + 3×2 components (or 3 vectors) of eigenvectors per definition; total elements per line = 13.
+- TSIG3EIGVEC3: includes an additional time dispersion; total elements per line = 14.
+
+## Block‑level rules
+
+- Time tags on covariance lines may be absolute or relative; do not mix within the block.
+- Time series must be strictly increasing and without duplicates.
+- Covariance matrices shall be positive semi-definite (PSD). Implementations should validate PSD (e.g., via Cholesky or eigenvalues) and reject/flag non-PSD input.
+- Units: values on the line are covariances (or correlations as defined for LTMWCC/UTMWCC); COV_UNITS documents the implied units of standard deviations for diagonal terms.
+
+## Validation checklist
+
+- Required keys present: COV_REF_FRAME, COV_TYPE, COV_ORDERING.
+- Element count per line matches ordering and matrix size for COV_TYPE.
+- For frames requiring epoch, COV_FRAME_EPOCH provided if not intrinsic.
+- Time rules satisfied (mode, order, uniqueness).
+- PSD check passes.
+
+## Interpolation guidance
+
+- Interpolating covariance time histories is non-trivial. Recommended methods include:
+  - dynamics-aware approaches (literature e.g., Alfano 2004),
+  - eigenvalue interpolation with Euler-axis/angle rotation of eigenvectors (Annex F),
+  - STM-based forward/backward propagation and weighted blending.
+- Preserve significant digits to maintain PSD after interpolation.
+
+## Cross-references
+
+- Frames, element sets, covariance types → /refs/enums-formats-units
+- Global time and syntax rules → /ocm/common-syntax
+- Annex F (interpolation and eigenvector methods) in the Blue Book

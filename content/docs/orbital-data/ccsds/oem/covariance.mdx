@@ -1,0 +1,105 @@
+
+---
+title: OEM Covariance
+description: Field dictionary for OEM covariance sections (CCSDS 502.0-B-3, Table 5-4)
+outline: deep
+---
+
+# Covariance Time History
+
+## Purpose and scope
+
+Describes the optional covariance matrix data that may follow an ephemeris block in an OEM. Covariances represent the uncertainty of the navigation solution or propagated uncertainty. Limited to 6x6 position/velocity state.
+
+## Block keywords and order
+
+- A covariance section, if present, follows the ephemeris lines of a segment and is delimited by:
+  - COVARIANCE_START
+  - one or more covariance matrices, each associated to an EPOCH (and optionally COV_REF_FRAME)
+  - COVARIANCE_STOP
+- Comments may appear only after COVARIANCE_START and before the first covariance line (7.8.9).
+- Multiple covariance matrices may appear and must be in increasing epoch order (5.2.5.6–5.2.5.7).
+- Only one covariance section per segment.
+
+## Field table (Table 5-4 and 5.2.5)
+
+| Keyword | Description | Units | Default (if any) | Examples of Values | M/O/C |
+|---------|-------------|-------|------------------|--------------------|---------|
+| COVARIANCE_START | This keyword is used to indicate the start of a covariance block within the message | - | - | COVARIANCE_START | M (if section present) |
+| EPOCH | Epoch (time tag) of the covariance matrix | - | - | 2019-12-28T21:29:07.267 | C |
+| COV_REF_FRAME | Reference frame in which the covariance matrix is expressed | - | - | EME2000 | C |
+| - | Matrix rows (lower-triangular 6×6) | See below | - | 3.3313494E-04 <br /> 4.6189273E-04 6.7824216E-04 <br /> ... | M (per matrix) |
+| COVARIANCE_STOP | This keyword is used to indicate the end of a covariance block within the message | - | - | COVARIANCE_STOP | M (if section present) |
+
+## Row content and ordering (6×6 lower triangular; position/velocity ordering)
+
+The state vector ordering is [X, Y, Z, X_DOT, Y_DOT, Z_DOT]. Provide the following rows exactly:
+
+- Row 1 (1 value): CX_X
+- Row 2 (2 values): CY_X, CY_Y
+- Row 3 (3 values): CZ_X, CZ_Y, CZ_Z
+- Row 4 (4 values): CX_DOT_X, CX_DOT_Y, CX_DOT_Z, CX_DOT_X_DOT
+- Row 5 (5 values): CY_DOT_X, CY_DOT_Y, CY_DOT_Z, CY_DOT_X_DOT, CY_DOT_Y_DOT
+- Row 6 (6 values): CZ_DOT_X, CZ_DOT_Y, CZ_DOT_Z, CZ_DOT_X_DOT, CZ_DOT_Y_DOT, CZ_DOT_Z_DOT
+
+## Units (KVN and XML)
+
+- KVN: units must not be displayed (7.7.2.2).
+  - Position–position: km²
+  - Position–velocity: km²/s
+  - Velocity–velocity: km²/s²
+- XML: units attributes may be supplied per Section 8; follow Table 8-7 examples.
+
+## Validation rules
+
+- Ordering: EPOCH (and optional COV_REF_FRAME) precede each matrix; matrices ordered by increasing epoch (5.2.5.6–5.2.5.7).
+- Matrix completeness: all lower-triangular entries must be present for each of the 6 rows.
+- Numerical format: values follow 7.5; no units text in KVN; at least one space between entries (5.2.5.5; 7.6; 7.7.2).
+- Positive semidefiniteness: covariance matrices should be positive semidefinite; reject or flag matrices with negative eigenvalues (good practice; compute via Cholesky or eigenvalue decomposition).
+- Frame consistency: if COV_REF_FRAME is omitted, interpret in the segment's REF_FRAME; if provided, ensure it maps correctly to the segment frame.
+- Epochs unique and increasing; time per TIME_SYSTEM.
+
+## Edge cases and notes
+
+- Multiple covariance matrices are allowed within the section and may represent sequential navigation solutions or propagated covariances (5.2.5.6).
+- The OEM covariance specification is limited to the 6×6 position/velocity state. Acceleration components in ephemeris lines do not change the covariance dimension in OEM KVN (use OCM if higher-order covariances are needed).
+- Time system for EPOCH follows the segment TIME_SYSTEM (7.5.11).
+- XML may include units attributes; this does not alter KVN constraints.
+- Optional support, but if present, full compliance (Item 15 in A2.5.3).
+
+## Examples
+
+Minimal covariance section with two matrices (illustrative):
+
+```
+COVARIANCE_START
+EPOCH = 2019-12-28T21:29:07.267
+COV_REF_FRAME = EME2000
+3.3313494E-04
+4.6189273E-04 6.7824216E-04
+-3.0700078E-04 -4.2212341E-04 3.2319319E-04
+-3.3493650E-07 -4.6860842E-07 2.4849495E-07 4.2960228E-10
+-2.2118325E-07 -2.8641868E-07 1.7980986E-07 2.6088992E-10 1.7675147E-10
+-3.0413460E-07 -4.9894969E-07 3.5403109E-07 1.8692631E-10 1.0088625E-10 6.2244443E-10
+EPOCH = 2019-12-29T21:00:00
+3.4424505E-04
+4.5078162E-04 6.8935327E-04
+-3.0600067E-04 -4.1101230E-04 3.3420420E-04
+-3.2382549E-07 -4.5750731E-07 2.3738384E-07 4.3071339E-10
+-2.1007214E-07 -2.7530757E-07 1.6870875E-07 2.5077881E-10 1.8786258E-10
+-3.0302350E-07 -4.8783858E-07 3.4302008E-07 1.7581520E-10 1.0077514E-10 6.2244443E-10
+COVARIANCE_STOP
+```
+
+OEM/XML with covariance:
+
+```xml
+<covariancematrix>
+    <epoch>2009-02-05T10:09:12</epoch>
+    <cov_ref_frame>EME2000</cov_ref_frame>
+    <cx_x units="km**2">1.23E+02</cx_x>
+    <cy_x units="km**2">4.56E+01</cy_x>
+    <cy_y units="km**2">7.89E+02</cy_y>
+    <!-- Full lower triangular -->
+</covariancematrix>
+```

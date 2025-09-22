@@ -1,0 +1,102 @@
+---
+title: OEM Validation and Ingest
+description: Structural, syntactic, and semantic checks for CCSDS OEM v3.0; includes edge cases and ICS checklist mapping
+outline: deep
+---
+
+# Validation and ingest checklist
+
+## Purpose
+
+Defines practical checks for validating and ingesting OEM files. Clauses reference CCSDS 502.0-B-3. Use in parsers to ensure compliance before processing.
+
+## Structural validation
+
+- Header
+  - First non-blank line is CCSDS_OEM_VERS = 3.0 (7.3.6; [Table 5-2](header.md#fields)).
+  - Required header fields present in order (7.4.8).
+  - Header comments only immediately after the version line (7.8.9).
+- Segments
+  - Each segment begins with META_START and ends with META_STOP (5.2.3.3).
+  - After META_STOP: at least two ephemeris lines ([Table 5-1](structure.md#oem-structure-table)).
+  - Optional covariance section present only after ephemeris lines and delimited by COVARIANCE_START/COVARIANCE_STOP (5.2.5.2).
+- Ordering
+  - Fixed keyword order within header and metadata (7.4.8; [Tables 5-2](header.md#fields), [5-3](metadata.md#fields)).
+  - No nested blocks; single header only.
+
+## Syntactic validation
+
+- Character set and line termination per 7.3 (printable ASCII; line length ≤ 254 chars).
+- KVN assignments conform to 'KEYWORD = value'; one assignment per line; uppercase keywords (7.4).
+- Comments use COMMENT at allowed locations (7.8.9).
+- Numbers meet 7.5:
+  - Integers within 32-bit range.
+  - Non-integers in fixed or floating format with ≤ 16 significant digits.
+- Time strings match CCSDS A/B formats; leap second ss=60 allowed (7.5.10).
+- Vectors and multipart lines are space-delimited (7.6; 5.2.4.3; 5.2.5.5).
+- No units displayed in KVN ephemeris/covariance lines (7.7.2).
+- KVN keyword: `^[A-Z_]+ = (.+)?$`; Ephemeris line: `^(\d{4}-\d{3}T.+?) ([-+]?\d+\.?\d*[eE]?-?\d*) {6,9}$`.
+
+## Semantic validation
+
+- Time systems and consistency:
+  - CREATION_DATE is UTC (7.5.11).
+  - TIME_SYSTEM fixed across the entire file; applies to all segment epochs (5.2.4.5; 7.5.11).
+  - START_TIME ≤ first ephemeris epoch ≤ last ephemeris epoch ≤ STOP_TIME ([Table 5-3](metadata.md#fields)).
+  - USEABLE_* within [START_TIME, STOP_TIME]; USEABLE intervals of consecutive segments must not overlap except at a shared endpoint (5.2.4.4).
+- Ephemeris structure:
+  - Strictly increasing and unique epochs within each segment (5.2.4.4).
+  - Consistent line format per segment: 7 tokens (time + position + velocity) or 10 tokens (+ acceleration) (5.2.4.1–5.2.4.2).
+  - If any line has acceleration, all lines in the segment must have acceleration (all-or-none triplet; 5.2.4.2).
+- Covariance validation:
+  - Increasing EPOCH order within a covariance section (5.2.5.7).
+  - Complete lower triangular 6×6 matrices (21 values per matrix) (5.2.5.4).
+  - Positive semidefiniteness (recommended check).
+- Registry validation:
+  - Validate ORIGINATOR, CENTER_NAME, REF_FRAME against SANA registries where practical (Annex B).
+  - Flag unrecognized TIME_SYSTEM or REF_FRAME values.
+
+## Good practice checks
+
+- Interpolation consistency: if INTERPOLATION is provided, verify INTERPOLATION_DEGREE and sufficient nodes for the method (5.2.4.7).
+- Covariance matrices should be PSD; flag or reject matrices with negative eigenvalues.
+- Cross-segment boundary epochs: allowed for interpolation continuity, but verify USEABLE intervals don't overlap improperly (5.2.4.4).
+- TEME frame caution: log a warning if REF_FRAME = TEME for OEM (see metadata guidance).
+
+## Edge cases and error handling
+
+- Unknown object IDs: accept "UNKNOWN" for OBJECT_NAME/OBJECT_ID when disclosure is not permitted ([Table 5-3](metadata.md#fields) note).
+- Leap seconds: ss=60 is valid and should be parsed correctly (7.5.10).
+- Empty segments: reject files with segments containing < 2 ephemeris lines.
+- Large numbers: warn or reject numbers with > 16 significant digits (7.5.6).
+- Non-standard extensions: USER_DEFINED content is not part of the OEM spec; parsers may ignore or flag per implementation policy.
+
+## Implementation checklist (ICS A2.5.3 mapping)
+
+Core compliance items:
+
+- Item 1: OEM Header support (mandatory) — check [Table 5-2](header.md#fields) fields.
+- Items 2-14: OEM Metadata support (mandatory) — check [Table 5-3](metadata.md#fields) ordering and values.
+- Item 16: OEM Ephemeris Data (≥ 2 lines/segment) — mandatory support.
+- Item 15/17: Covariance support — optional but full compliance if present.
+
+Validation summary workflow:
+
+1. Structural checks: version, headers, segment delimiters, block ordering.
+2. Syntactic checks: character set, KVN format, numeric ranges, time formats.
+3. Semantic checks: time consistency, field relationships, covariance completeness.
+4. Registry validation: cross-reference SANA where practical.
+5. Edge case handling: accept or reject based on implementation requirements.
+
+## Minimal acceptance criteria
+
+For a file to be considered a valid OEM:
+
+- CCSDS_OEM_VERS = 3.0 as the first non-blank line.
+- Complete header with all mandatory fields.
+- At least one segment with META_START/META_STOP and ≥ 2 ephemeris lines.
+- All mandatory metadata fields present in correct order.
+- Monotonic time within each segment; consistent TIME_SYSTEM across the file.
+- Syntactically correct KVN and data lines.
+
+Reject files that fail any of these criteria; log specific validation errors for debugging.

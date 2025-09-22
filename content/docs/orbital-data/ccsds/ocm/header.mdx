@@ -1,0 +1,45 @@
+---
+title: OCM Header
+description: Field dictionary for CCSDS OCM Header (CCSDS 502.0-B-3, §6.2.3; Table 6‑2)
+outline: deep
+---
+
+
+# OCM Header
+
+## Purpose and scope
+
+The Header identifies the file, origin, and creation time. It is the first non-blank content in an OCM and precedes the Metadata block.
+
+## Block keywords and order
+The header consists of ordered KVN assignments. The allowed keywords and their fixed order are:
+
+1) CCSDS_OCM_VERS (M)
+2) COMMENT (O; one or more, immediately after version)
+3) CLASSIFICATION (O)
+4) CREATION_DATE (M)
+5) ORIGINATOR (M)
+6) MESSAGE_ID (O)
+
+## Fields
+
+| Field | Requirement | Type | Format/Enum | Units | Default | Description | Example | Notes |
+|-------|-------------|------|-------------|-------|---------|-------------|---------|-------|
+| CCSDS_OCM_VERS | Mandatory | real (x.y) | version number | n/a | None | Version of the OCM format. Major x increments for major changes, minor y for corrections. Current Blue Book: 3.0. | 3.0 | Must be the first non-blank line. |
+| COMMENT | Optional | text | KVN comment line | n/a | None | Free-text comment lines. Only permitted immediately after CCSDS_OCM_VERS in the header. | COMMENT This is a comment | See comment placement rules in /ocm/common-syntax |
+| CLASSIFICATION | Optional | text | free-text | n/a | None | Message classification/caveats agreed between partners. | SBU - Operator-proprietary data; secondary distribution not permitted | Informative only. |
+| CREATION_DATE | Mandatory | time | CCSDS A/B UTC; see /refs/enums-formats-units#time-formats | n/a | None | File creation date/time in UTC. | 2002-204T15:56:23Z | Must be UTC regardless of TIME_SYSTEM elsewhere. Leap seconds allowed. |
+| ORIGINATOR | Mandatory | text | organization from SANA registry /refs/enums-formats-units#organizations | n/a | None | Creating agency/operator (abbreviation preferred). | GSFC | Use SANA Organizations; register if missing. |
+| MESSAGE_ID | Optional | text | free-text | n/a | None | Unique identifier assigned by originator. | OCM_201113719185 | Uniqueness semantics are originator-defined. |
+
+## Validation and constraints
+
+- CCSDS_OCM_VERS must equal the schema/version understood by the parser; reject unknown major versions.
+- COMMENT lines are allowed only immediately after the version line in the header.
+- CREATION_DATE must validate against CCSDS Time Code A/B (UTC).
+- ORIGINATOR value should be present in the SANA Organizations registry.
+
+## Cross-references
+
+- Subsequent sections shall conform to the version declared here.
+- Additional comments can be placed at the start of other blocks (see /ocm/common-syntax).

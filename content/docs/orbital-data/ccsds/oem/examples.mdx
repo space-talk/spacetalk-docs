@@ -1,0 +1,132 @@
+---
+title: OEM Examples
+description: Minimal compliant KVN and XML examples for CCSDS OEM v3.0, including covariance section
+outline: deep
+---
+
+Minimal KVN OEM (single segment)
+
+CCSDS_OEM_VERS = 3.0
+CREATION_DATE = 2002-204T15:56:23Z
+ORIGINATOR = GSFC
+META_START
+OBJECT_NAME = STS 106
+OBJECT_ID = 2000-053A
+CENTER_NAME = EARTH
+REF_FRAME = EME2000
+TIME_SYSTEM = UTC
+START_TIME = 1996-12-18T14:28:15.1172
+STOP_TIME  = 1996-12-18T14:28:15.1172
+META_STOP
+1996-12-18T22:00:00.0000 35773.173676 131.640706 2.348777 0.001161 3.164996 -0.000008
+
+KVN OEM with covariance (two matrices for illustration)
+
+CCSDS_OEM_VERS = 3.0
+CREATION_DATE = 2019-11-04T17:22:31Z
+ORIGINATOR = NASA/JPL
+MESSAGE_ID = OEM 201113719185
+META_START
+OBJECT_NAME = MARS GLOBAL SURVEYOR
+OBJECT_ID = 1996-062A
+CENTER_NAME = MARS BARYCENTER
+REF_FRAME = EME2000
+TIME_SYSTEM = UTC
+START_TIME = 2019-12-28T21:29:07.267
+USEABLE_START_TIME = 2019-12-28T22:08:02.5
+USEABLE_STOP_TIME = 2019-12-30T01:18:02.5
+STOP_TIME = 2019-12-30T01:28:02.267
+INTERPOLATION = HERMITE
+INTERPOLATION_DEGREE = 7
+META_STOP
+2019-12-28T21:29:07.267 -2432.166 -063.042 1742.754 7.33702 -3.495867 -1.041945
+2019-12-28T21:59:02.267 -2445.234 -878.141 1873.073 1.86043 -3.421256 -0.996366
+COVARIANCE_START
+EPOCH = 2019-12-28T21:29:07.267
+COV_REF_FRAME = EME2000
+3.3313494e-04
+4.6189273e-04 6.7824216e-04
+-3.0700078e-04 -4.2212341e-04 3.2319319e-04
+-3.3493650e-07 -4.6860842e-07 2.4849495e-07 4.2960228e-10
+-2.2118325e-07 -2.8641868e-07 1.7980986e-07 2.6088992e-10 1.7675147e-10
+-3.0413460e-07 -4.9894969e-07 3.5403109e-07 1.8692631e-10 1.0088625e-10 6.2244443e-10
+EPOCH = 2019-12-29T21:00:00
+3.4424505e-04
+4.5078162e-04 6.8935327e-04
+-3.0600067e-04 -4.1101230e-04 3.3420420e-04
+-3.2382549e-07 -4.5750731e-07 2.3738384e-07 4.3071339e-10
+-2.1007214e-07 -2.7530757e-07 1.6870875e-07 2.5077881e-10 1.8786258e-10
+-3.0302350e-07 -4.8783858e-07 3.4302008e-07 1.7581520e-10 1.0077514e-10 6.2244443e-10
+COVARIANCE_STOP
+
+Multi-segment KVN (for discontinuity):
+
+... header ...
+META_START
+... first metadata ...
+META_STOP
+... first ephemeris ...
+META_START
+OBJECT_NAME = MARS GLOBAL SURVEYOR
+... second metadata with updated START_TIME ...
+META_STOP
+... second ephemeris ...
+
+Minimal OEM/XML segment
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<oem xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:noNamespaceSchemaLocation="https://sanaregistry.org/r/ndmxml_unqualified/ndmxml-3.0.0-master-3.0.xsd"
+     id="CCSDS_OEM_VERS" version="3.0">
+  <header>
+    <CREATION_DATE>2002-204T15:56:23Z</CREATION_DATE>
+    <ORIGINATOR>GSFC</ORIGINATOR>
+  </header>
+  <body>
+    <segment>
+      <metadata>
+        <OBJECT_NAME>STS 106</OBJECT_NAME>
+        <OBJECT_ID>2000-053A</OBJECT_ID>
+        <CENTER_NAME>EARTH</CENTER_NAME>
+        <REF_FRAME>EME2000</REF_FRAME>
+        <TIME_SYSTEM>UTC</TIME_SYSTEM>
+        <START_TIME>1996-12-18T14:28:15.1172</START_TIME>
+        <STOP_TIME>1996-12-18T14:28:15.1172</STOP_TIME>
+      </metadata>
+      <data>
+        <stateVector>
+          <EPOCH>1996-12-18T22:00:00.0000</EPOCH>
+          <X>35773.173676</X>
+          <Y>131.640706</Y>
+          <Z>2.348777</Z>
+          <X_DOT>0.001161</X_DOT>
+          <Y_DOT>3.164996</Y_DOT>
+          <Z_DOT>-0.000008</Z_DOT>
+        </stateVector>
+      </data>
+    </segment>
+  </body>
+</oem>
+```
+
+With acceleration:
+
+```xml
+<statevector>
+  <epoch>...</epoch>
+  <x>...</x> ... <z_dot>...</z_dot>
+  <x_ddot units="km/s**2">0.0</x_ddot>
+  <y_ddot units="km/s**2">0.0</y_ddot>
+  <z_ddot units="km/s**2">0.0</z_ddot>
+</statevector>
+```
+
+NDM with OEM + OPM:
+
+```xml
+<ndm id="CCSDS_NDM_VERS" version="3.0">
+  <oem>...</oem>
+  <opm>...</opm>
+</ndm>
+```

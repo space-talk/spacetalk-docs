@@ -1,0 +1,719 @@
+---
+title: TLE Format Specification
+description: Detailed field-by-field specification of the Two-Line Element Set format
+outline: deep
+---
+
+# TLE Format Specification
+
+TLEs consist of two lines, each 69 characters long (excluding CR/LF or LF newline). Columns are 1-based. Fields are right-justified unless noted.
+
+Implied decimals mean no explicit '.'; parse by inserting before the digits (e.g., '0005770' → 0.0005770).
+
+Units are as specified; angles in degrees.
+
+## Line 1
+
+### Line 1 - Record 1: Line Number
+
+**Field**: Line Number
+
+**Formal Name and Purpose**: Identifies as Line 1. Must be '1' for structural integrity.
+
+**Line**: 1
+
+**Columns (1-based, inclusive)**: 1-1
+
+**Width**: 1
+
+**Type**: Char
+
+**Sign Rules**: N/A
+
+**Implied Decimal**: No
+
+**Units**: N/A
+
+**Valid Range**: '1' only
+
+**Typical Range**: '1'
+
+**Dependencies/Interactions**: Must match '2' on Line 2; mismatch rejects pair.
+
+**Example Values (incl. Edges)**: '1' (normal); blank (reject).
+
+**Notes**: Shall reject if not '1'. Informs no semantics beyond structure.
+
+---
+
+### Line 1 - Record 2: Satellite Catalog Number
+
+**Field**: Satellite Catalog Number
+
+**Formal Name and Purpose**: NORAD satellite ID (unique integer). Used for identification and matching across lines.
+
+**Line**: 1
+
+**Columns (1-based, inclusive)**: 3-7
+
+**Width**: 5
+
+**Type**: Integer
+
+**Sign Rules**: Unsigned
+
+**Implied Decimal**: No
+
+**Units**: Unitless
+
+**Valid Range**: 1 - 99999
+
+**Typical Range**: 1 - 50000+
+
+**Dependencies/Interactions**: Must match Line 2; used by SGP4 for ID only (not propagation). Future > 5 digits: parse as string, warn.
+
+**Example Values (incl. Edges)**: '00005' (Vanguard 1); '99999' (edge); blank (parse as 0, warn).
+
+**Notes**: Right-padded with spaces if < 5 digits. Shall reject mismatch with Line 2.
+
+---
+
+### Line 1 - Record 3: Classification
+
+**Field**: Classification
+
+**Formal Name and Purpose**: Security classification. Used for access control; irrelevant to orbital mechanics.
+
+**Line**: 1
+
+**Columns (1-based, inclusive)**: 8-8
+
+**Width**: 1
+
+**Type**: Char
+
+**Sign Rules**: N/A
+
+**Implied Decimal**: No
+
+**Units**: N/A
+
+**Valid Range**: 'U', 'C', 'S' (unclassified, classified, secret); STR#3 also allows blank.
+
+**Typical Range**: 'U' (public), blank (common).
+
+**Dependencies/Interactions**: None. May affect data distribution but not propagation.
+
+**Example Values (incl. Edges)**: 'U' (unclassified); blank (unknown/legacy).
+
+**Notes**: Public TLEs typically 'U' or blank. Parse leniently; non-standard chars acceptable with warnings.
+
+---
+
+### Line 1 - Record 4: International Launch Designator
+
+**Field**: International Launch Designator
+
+**Formal Name and Purpose**: Launch year, launch of year, and piece ID (YYYY-NNN[letter(s)]). Links to launch event.
+
+**Line**: 1
+
+**Columns (1-based, inclusive)**: 10-17
+
+**Width**: 8
+
+**Type**: String
+
+**Sign Rules**: N/A
+
+**Implied Decimal**: No
+
+**Units**: N/A
+
+**Valid Range**: Format YYLLLPPP where YY=year (00–99), LLL=launch number (001-999), PPP=piece (A–ZZZ).
+
+**Typical Range**: 57A01 (Sputnik 1, 1957) to present.
+
+**Dependencies/Interactions**: May help cross-reference but not used by SGP4. Year ambiguity: apply windowing (e.g., 57-99 -> 19XX, 00-56 -> 20XX).
+
+**Example Values (incl. Edges)**: '98067A  ' (ISS), '00000   ' (test/unknown).
+
+**Notes**: Often left-padded with spaces. Parse as string; validate format if needed.
+
+---
+
+### Line 1 - Record 5: Epoch (Year)
+
+**Field**: Epoch Year
+
+**Formal Name and Purpose**: Two-digit year of epoch. Used with day-of-year to set reference time.
+
+**Line**: 1
+
+**Columns (1-based, inclusive)**: 19-20
+
+**Width**: 2
+
+**Type**: Integer
+
+**Sign Rules**: Unsigned
+
+**Implied Decimal**: No
+
+**Units**: Years
+
+**Valid Range**: 00–99
+
+**Typical Range**: 57–99 (1957-1999), 00–56 (2000–2056).
+
+**Dependencies/Interactions**: Combined with epoch day to compute Julian date. Windowing: recommend 57-99 -> 19XX, 00-56 -> 20XX.
+
+**Example Values (incl. Edges)**: '98' (1998), '00' (2000), '56' (2056, edge of common window).
+
+**Notes**: Two-digit ambiguity requires windowing. Critical for epoch computation.
+
+---
+
+### Line 1 - Record 6: Epoch (Day of Year)
+
+**Field**: Epoch Day of Year
+
+**Formal Name and Purpose**: Fractional day of year (1.0 = Jan 1 00:00:00). Sets precise epoch time.
+
+**Line**: 1
+
+**Columns (1-based, inclusive)**: 21-32
+
+**Width**: 12
+
+**Type**: Float
+
+**Sign Rules**: Unsigned (always positive)
+
+**Implied Decimal**: Yes, after 3 digits (NNN.NNNNNNNN)
+
+**Units**: Days
+
+**Valid Range**: `1.0 <= value <= 366.99999999` (366 for leap years)
+
+**Typical Range**: 1.0–365.x
+
+**Dependencies/Interactions**: Combined with epoch year to compute Julian date. Validate leap year consistency.
+
+**Example Values (incl. Edges)**: '001.00000000' (Jan 1 00:00:00), '365.99999999' (Dec 31 23:59:59.999), '366.50000000' (leap year, Dec 31 12:00:00).
+**Notes**: High precision critical for SGP4. Implied decimal: '00100000000' -> 1.00000000.
+
+---
+
+### Line 1 - Record 7: First Derivative of Mean Motion
+
+**Field**: First Derivative of Mean Motion
+
+**Formal Name and Purpose**: Rate of change of mean motion (dn/dt). Used by SGP4 for drag modeling.
+
+**Line**: 1
+
+**Columns (1-based, inclusive)**: 34-43
+
+**Width**: 10
+
+**Type**: Float
+
+**Sign Rules**: Signed (+ or -)
+
+**Implied Decimal**: Yes, after 2 digits (±N.NNNNNNNN)
+
+**Units**: rev/day²
+
+**Valid Range**: Typically -0.1 to +0.1, but can be larger for high-drag satellites.
+
+**Typical Range**: -0.00001 to +0.00001
+
+**Dependencies/Interactions**: Used by SGP4 for drag perturbations. Often small for stable orbits.
+
+**Example Values (incl. Edges)**: '+.00000123' (slight drag), '-.00012345' (higher drag), '+00000000' (zero, rare).
+
+**Notes**: Leading + often omitted. Implied decimal: '+0000123' → +0.0000123. Critical for SGP4 accuracy.
+
+---
+
+### Line 1 - Record 8: Second Derivative of Mean Motion
+
+**Field**: Second Derivative of Mean Motion
+
+**Formal Name and Purpose**: Second derivative of mean motion (d²n/dt²). Used for advanced drag modeling.
+
+**Line**: 1
+
+**Columns (1-based, inclusive)**: 45-52
+
+**Width**: 8
+
+**Type**: Float (exponential notation)
+
+**Sign Rules**: Signed (+ or -)
+
+**Implied Decimal**: Yes, scientific notation (`±NNNNN±NN → ±0.NNNNNx10^±NN`)
+
+**Units**: rev/day³
+
+**Valid Range**: Typically very small, often zero.
+
+**Typical Range**: -1×10⁻⁵ to +1×10⁻⁵
+
+**Dependencies/Interactions**: Used by SGP4 but often ignored in practice. May be zero for many satellites.
+
+**Example Values (incl. Edges)**: '+12345-4' (+1.2345×10⁻⁴), '-67890-5' (-6.7890×10⁻⁵), '+00000+0' (zero).
+
+**Notes**: Exponential: no 'E'. Parse `±MMMMM±EE` as `±0.MMMMM×10^±EE`. Often zero in public TLEs.
+
+---
+
+### Line 1 - Record 9: B* Drag Term
+
+**Field**: B* Drag Term
+
+**Formal Name and Purpose**: Drag-like parameter (B*). Used by SGP4 for atmospheric drag effects.
+
+**Line**: 1
+
+**Columns (1-based, inclusive)**: 54-61
+
+**Width**: 8
+
+**Type**: Float (exponential notation)
+
+**Sign Rules**: Signed (+ or -)
+
+**Implied Decimal**: Yes, scientific notation (`±NNNNN±NN → ±0.NNNNN×10^±NN`)
+
+**Units**: 1/Earth radii
+
+**Valid Range**: Typically -1 to +1, but can be larger.
+
+**Typical Range**: -0.1 to +0.1
+
+**Dependencies/Interactions**: Critical for SGP4 drag modeling. Satellite-specific based on ballistic coefficient.
+
+**Example Values (incl. Edges)**: '+12345-4' (+1.2345×10⁻⁴), '-67890-3' (-6.7890×10⁻³), '+00000+0' (zero, unlikely).
+
+**Notes**: Same exponential format as second derivative. Essential for accurate SGP4 propagation.
+
+---
+
+### Line 1 - Record 10: Ephemeris Type
+
+**Field**: Ephemeris Type
+
+**Formal Name and Purpose**: Type of ephemeris model. Indicates source/method of orbital determination.
+
+**Line**: 1
+
+**Columns (1-based, inclusive)**: 63-63
+
+**Width**: 1
+
+**Type**: Integer
+
+**Sign Rules**: Unsigned
+
+**Implied Decimal**: No
+
+**Units**: N/A
+
+**Valid Range**: 0–9 (STR#3); 0 is most common for public TLEs.
+
+**Typical Range**: 0 (SGP4-compatible)
+
+**Dependencies/Interactions**: SGP4 designed for type 0. Other types may have different propagation requirements.
+
+**Example Values (incl. Edges)**: '0' (standard SGP4), '1' (alternative, rare), blank (parse as 0).
+
+**Notes**: Public TLEs almost always 0. Parse leniently; warn for non-zero values.
+
+---
+
+### Line 1 - Record 11: Element Set Number
+
+**Field**: Element Set Number
+
+**Formal Name and Purpose**: Sequential number for element set updates. Used to identify latest TLE for a satellite.
+
+**Line**: 1
+
+**Columns (1-based, inclusive)**: 65-68
+
+**Width**: 4
+
+**Type**: Integer
+
+**Sign Rules**: Unsigned
+
+**Implied Decimal**: No
+
+**Units**: N/A
+
+**Valid Range**: 0–9999
+
+**Typical Range**: 1–9999, rolls over at 9999.
+
+**Dependencies/Interactions**: Higher numbers indicate more recent TLEs. Used for versioning, not propagation.
+
+**Example Values (incl. Edges)**: '0001' (first), '9999' (before rollover), '0000' (after rollover).
+
+**Notes**: Right-padded with spaces. Critical for determining most recent TLE.
+
+---
+
+### Line 1 - Record 12: Checksum
+
+**Field**: Checksum
+
+**Formal Name and Purpose**: Modulo-10 checksum for error detection. Validates line integrity.
+
+**Line**: 1
+
+**Columns (1-based, inclusive)**: 69-69
+
+**Width**: 1
+
+**Type**: Integer
+
+**Sign Rules**: Unsigned
+
+**Implied Decimal**: No
+
+**Units**: N/A
+
+**Valid Range**: 0–9
+
+**Typical Range**: 0–9
+
+**Dependencies/Interactions**: Must match computed checksum of columns 1–68.
+
+**Example Values (incl. Edges)**: '0' through '9', any digit.
+
+**Notes**: Checksum algorithm: sum all digits in cols 1–68, where '-'=1, '+'=0, other non-digits=0. Result mod 10.
+
+## Line 2
+
+### Line 2 - Record 1: Line Number
+
+**Field**: Line Number
+
+**Formal Name and Purpose**: Identifies as Line 2. Must be '2' for structural integrity.
+
+**Line**: 2
+
+**Columns (1-based, inclusive)**: 1-1
+
+**Width**: 1
+
+**Type**: Char
+
+**Sign Rules**: N/A
+
+**Implied Decimal**: No
+
+**Units**: N/A
+
+**Valid Range**: '2' only
+
+**Typical Range**: '2'
+
+**Dependencies/Interactions**: Must match '1' on Line 1; mismatch rejects pair.
+
+**Example Values (incl. Edges)**: '2' (normal); blank (reject).
+
+**Notes**: Shall reject if not '2'. Ensures line pairing integrity.
+
+---
+
+### Line 2 - Record 2: Satellite Catalog Number
+
+**Field**: Satellite Catalog Number
+
+**Formal Name and Purpose**: NORAD satellite ID (must match Line 1). Used for line pairing verification.
+
+**Line**: 2
+
+**Columns (1-based, inclusive)**: 3-7
+
+**Width**: 5
+
+**Type**: Integer
+
+**Sign Rules**: Unsigned
+
+**Implied Decimal**: No
+
+**Units**: Unitless
+
+**Valid Range**: 1–99999
+
+**Typical Range**: 1–50000+
+
+**Dependencies/Interactions**: Must match Line 1 exactly. Mismatch rejects the TLE pair.
+
+**Example Values (incl. Edges)**: '00005' (matching Line 1), '99999' (edge case).
+
+**Notes**: Critical for line pairing. Same formatting as Line 1.
+
+---
+
+### Line 2 - Record 3: Inclination
+
+**Field**: Inclination
+
+**Formal Name and Purpose**: Orbital inclination (i). Angle between orbital and equatorial planes.
+
+**Line**: 2
+
+**Columns (1-based, inclusive)**: 9-16
+
+**Width**: 8
+
+**Type**: Float
+
+**Sign Rules**: Unsigned (always positive)
+
+**Implied Decimal**: Yes, after 3 digits (NNN.NNNNN)
+
+**Units**: degrees
+
+**Valid Range**: $0.0 \leq i \leq 180.0$
+
+**Typical Range**: 0°-180°; 0° (equatorial), 90° (polar), > 90° (retrograde)
+
+**Dependencies/Interactions**: Fundamental orbital element for SGP4. Affects satellite ground track.
+
+**Example Values (incl. Edges)**: '000.0000' (equatorial), '090.0000' (polar), '180.0000' (retrograde equatorial).
+
+**Notes**: Implied decimal: '0511234' → 51.1234°. Critical for SGP4 calculations.
+
+---
+
+
+
+### Line 2 - Record 4: Right Ascension of Ascending Node
+
+**Field**: Right Ascension of Ascending Node (RAAN)
+
+**Formal Name and Purpose**: Longitude of ascending node (Ω). Defines orbital plane orientation.
+
+**Line**: 2
+
+**Columns (1-based, inclusive)**: 18-25
+
+**Width**: 8
+
+**Type**: Float
+
+**Sign Rules**: Unsigned (always positive, 0–360°)
+
+**Implied Decimal**: Yes, after 3 digits (NNN.NNNNN)
+
+**Units**: degrees
+
+**Valid Range**: $0.0 \leq \Omega < 360.0$
+
+**Typical Range**: 0°–359.9999°
+
+**Dependencies/Interactions**: Fundamental orbital element. Precesses due to Earth oblateness (J₂).
+
+**Example Values (incl. Edges)**: '000.0000' (vernal equinox), '180.0000' (opposite), '359.9999' (near 360°).
+
+**Notes**: Wraps at 360°. Implied decimal: '1801234' → 180.1234°. Essential for orbit plane definition.
+
+---
+
+### Line 2 - Record 5: Eccentricity
+
+**Field**: Eccentricity
+
+**Formal Name and Purpose**: Orbital eccentricity (e). Defines orbit shape (0=circular, < 1=elliptical).
+
+**Line**: 2
+
+**Columns (1-based, inclusive)**: 27-33
+
+**Width**: 7
+
+**Type**: Float
+
+**Sign Rules**: Unsigned (always positive)
+
+**Implied Decimal**: Yes, after 0 digits (`0.NNNNNNN`)
+
+**Units**: dimensionless
+
+**Valid Range**: $0.0 \leq e < 1.0$ (parabolic e = 1 not supported by SGP4)
+
+**Typical Range**: 0.000–0.999; LEO typically $< 0.1$, GEO ~0.0, HEO up to 0.9+
+
+**Dependencies/Interactions**: Fundamental orbital element. High eccentricity requires SDP4 (deep space) mode.
+
+**Example Values (incl. Edges)**: '0000000' (circular), '0012345' (0.012345), '9999999' (0.999999, nearly parabolic).
+
+**Notes**: Always fractional: '1234567' → 0.1234567. No leading zero shown. Critical for orbit shape.
+
+---
+
+### Line 2 - Record 6: Argument of Perigee
+
+**Field**: Argument of Perigee
+
+**Formal Name and Purpose**: Argument of perigee (ω). Angle from ascending node to perigee.
+
+**Line**: 2
+
+**Columns (1-based, inclusive)**: 35-42
+
+**Width**: 8
+
+**Type**: Float
+
+**Sign Rules**: Unsigned (always positive, 0–360°)
+
+**Implied Decimal**: Yes, after 3 digits (NNN.NNNNN)
+
+**Units**: degrees
+
+**Valid Range**: $0.0 \leq \omega < 360.0$
+
+**Typical Range**: 0°–359.9999°
+
+**Dependencies/Interactions**: Fundamental orbital element. For circular orbits (e≈0), the value is meaningless but still parsed.
+
+**Example Values (incl. Edges)**: '000.0000' (perigee at ascending node), '090.0000' (90° past), '270.0000' (270° past).
+
+**Notes**: Wraps at 360°. Implied decimal: '2701234' → 270.1234°. Undefined for circular orbits but still present.
+
+---
+
+### Line 2 - Record 7: Mean Anomaly
+
+**Field**: Mean Anomaly
+
+**Formal Name and Purpose**: Mean anomaly (M). Position along orbit at epoch (0°=perigee, 180°=apogee).
+
+**Line**: 2
+
+**Columns (1-based, inclusive)**: 44-51
+
+**Width**: 8
+
+**Type**: Float
+
+**Sign Rules**: Unsigned (always positive, 0–360°)
+
+**Implied Decimal**: Yes, after 3 digits (NNN.NNNNN)
+
+**Units**: degrees
+
+**Valid Range**: $0.0 \leq M < 360.0$
+
+**Typical Range**: 0°–359.9999°
+
+**Dependencies/Interactions**: Fundamental orbital element. Combined with eccentricity to compute true anomaly.
+
+**Example Values (incl. Edges)**: '000.0000' (at perigee), '180.0000' (at apogee), '090.0000' (90° past perigee).
+
+**Notes**: Wraps at 360°. Implied decimal: '0901234' → 90.1234°. Essential for satellite position at epoch.
+
+---
+
+### Line 2 - Record 8: Mean Motion
+
+
+
+**Field**: Mean Motion
+
+**Formal Name and Purpose**: Mean motion (n). Average angular velocity (revolutions per day).
+
+**Line**: 2
+
+**Columns (1-based, inclusive)**: 53-63
+
+**Width**: 11
+
+**Type**: Float
+
+**Sign Rules**: Unsigned (always positive)
+
+**Implied Decimal**: Yes, after 2 digits (NN.NNNNNNNNN)
+
+**Units**: rev/day
+
+**Valid Range**: $> 0.0$; typically 0.1–20.0
+
+**Typical Range**: 1.0-16.0 (LEO: 14-16, GEO: 1.0, HEO: 1.0–7.0)
+
+**Dependencies/Interactions**: Fundamental for SGP4. Determines orbital period. Combined with first derivative for drag effects.
+
+**Example Values (incl. Edges)**: '01.00000000' (1 rev/day, GEO), '15.50000000' (typical LEO), '00.10000000' (high orbit).
+**Notes**: High precision essential. Implied decimal: '0150000000' → 1.50000000 rev/day. Defines orbital period.
+
+---
+
+### Line 2 - Record 9: Revolution Number at Epoch
+
+**Field**: Revolution Number at Epoch
+
+**Formal Name and Purpose**: Orbit number at epoch. Used for orbit counting and prediction.
+
+**Line**: 2
+
+**Columns (1-based, inclusive)**: 64-68
+
+**Width**: 5
+
+**Type**: Integer
+
+**Sign Rules**: Unsigned
+
+**Implied Decimal**: No
+
+**Units**: revolutions
+
+**Valid Range**: 0–99999
+
+**Typical Range**: 0–99999, rolls over at 99999
+
+**Dependencies/Interactions**: Combined with mean motion to predict future revolution numbers. Not used by SGP4 for propagation.
+
+**Example Values (incl. Edges)**: '00001' (first orbit), '99999' (before rollover), '00000' (after rollover or initial).
+
+**Notes**: Right-padded with spaces. Used for tracking orbit count, not orbital mechanics.
+
+---
+
+### Line 2 - Record 10: Checksum
+
+**Field**: Checksum
+
+**Formal Name and Purpose**: Modulo-10 checksum for error detection. Validates line integrity.
+
+**Line**: 2
+
+**Columns (1-based, inclusive)**: 69-69
+
+**Width**: 1
+
+**Type**: Integer
+
+**Sign Rules**: Unsigned
+
+**Implied Decimal**: No
+
+**Units**: N/A
+
+**Valid Range**: 0–9
+
+**Typical Range**: 0–9
+
+**Dependencies/Interactions**: Must match computed checksum of columns 1–68.
+
+**Example Values (incl. Edges)**: '0' through '9', any digit.
+
+**Notes**: Same algorithm as Line 1. Sum all digits in cols 1-68, where '-'=1, '+'=0, other non-digits=0. Result mod 10.

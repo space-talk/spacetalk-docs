@@ -1,0 +1,76 @@
+---
+title: Common syntax and value rules (KVN)
+description: CCSDS ODM KVN rules, numeric formats, time representations, allowed characters, comments, and units constraints used by OEM
+outline: deep
+---
+
+# Common syntax and formats
+
+This page consolidates KVN syntax, numeric/time formats, units, and comment placement rules used by the OEM. Clauses refer to CCSDS 502.0‑B‑3.
+
+## Lines, characters, and termination
+
+- Allowed line types: header, metadata, data, comment, blank (7.3.1).
+- Maximum line length: 254 ASCII characters and spaces for OPM/OMM/OEM (excluding line termination) (7.3.2).
+- Allowed characters: printable ASCII and blanks only; no control characters except CR, LF, CR/LF, or LF/CR terminators (7.3.4, 7.3.7).
+- First non‑blank line must be the version keyword (e.g., CCSDS_OEM_VERS) (7.3.6).
+
+## KVN (Key = Value Notation)
+
+- Format: KEYWORD = value
+- Keyword constraints: uppercase A–Z, digits and underscores only; no blanks.
+- Exactly one assignment per line.
+- White space around the keyword, equals sign, and end‑of‑line is insignificant.
+- Order of assignments is fixed per the relevant section tables (e.g., [Table 5‑2](header.md#fields) for the OEM header; 7.4.8).
+
+Comments (7.8)
+
+- Each comment line starts with COMMENT plus at least one space; the remainder of the line is free text (7.8.5).
+- Placement for OEM (7.8.9):
+  - Header: immediately after CCSDS_OEM_VERS.
+  - Metadata: immediately after META_START.
+  - Data: at the beginning of the ephemeris data section (before the first ephemeris line).
+  - Covariance: after COVARIANCE_START (before the first covariance line).
+- Comments must not appear inside the block of ephemeris lines nor within the block of covariance matrix lines (7.8.9).
+
+## Numberic values
+
+- Integers: optional sign; range −2,147,483,648 to +2,147,483,647.
+- Non‑integers may be fixed‑point or floating‑point:
+  - Fixed‑point: at least one digit before and after the decimal point; up to 16 digits total.
+  - Floating‑point: optional sign; mantissa with decimal point in the second character; E/e exponent with optional sign; up to 16 significant digits; magnitude approx. 4.94E−324 to 1.798E+308.
+- No blanks within numeric values (7.5.8).
+- Recommendation: warn or reject numbers with more than 16 significant digits (7.5.6–7.5.8).
+
+## Time values
+
+- Absolute time formats (Time Code A/B):
+  - YYYY‑MM‑DDThh:mm:ss[.d…][Z]
+  - YYYY‑DDDThh:mm:ss[.d…][Z]
+- Leading zeros required. Leap second "ss=60" is permitted (7.5.10).
+- Time system:
+  - CREATION_DATE is always UTC (7.5.11).
+  - All other epochs follow TIME_SYSTEM declared in metadata (7.5.11).
+
+## Vector encoding and arrays
+
+- Multipart numeric vectors (e.g., OEM covariance rows) are space‑delimited and appear on a single line.
+
+## Units
+
+- OEM ephemeris KVN lines: units are implicit and must not be displayed (7.7.2.1).
+  - Position: km; velocity: km/s; acceleration: km/s² when present.
+- OEM covariance KVN lines: units are implicit and must not be displayed (7.7.2.2).
+  - Position–position: km²; position–velocity: km²/s; velocity–velocity: km²/s².
+- XML may include units attributes per Section 8; this does not change KVN rules.
+
+Regex validation (7.10, Annex F)
+
+- The standard provides example regex patterns to validate time strings and numeric forms (Annex F.6).
+- Use per‑field regex plus semantic checks (ordering, monotonicity) for robust ingest.
+
+Error handling and edge cases
+
+- Leap seconds must parse and be represented as specified (7.5.10).
+- TEME: for OEM, use only if documented in an ICD; TEME is primarily used for OMM/TLE (see 4.2.4.9; for OEM, use with caution).
+- SCLK time systems require an ICD describing correlation to UTC; for OEM this is usually avoided (Annex B, B3; Annex I).

@@ -1,0 +1,234 @@
+---
+title: TLE Edge Cases
+description: Comprehensive catalog of edge cases and required behaviors for TLE parsing
+outline: deep
+---
+
+# TLE Edge Cases Catalog
+
+This section provides a comprehensive catalog of edge cases encountered in real-world TLE data and the required parser behavior for each.
+
+## Missing or Blank Data
+
+### Edge Case 1: Missing COSPAR Designator
+**Description**: International designator fields are blank or contain only spaces
+**Required Behavior**: Accept; store as None; no fail. Enrich externally if needed.
+**Example**:
+```
+Line 1: 1 12345U           20001.00000000 ...
+```
+**Parser Action**: Set COSPAR fields to null/None values, continue processing
+
+---
+
+### Edge Case 2: Classification Blank/Unknown
+**Description**: Classification field contains space or unknown character
+**Required Behavior**: Parse as unknown; continue; warn.
+**Examples**:
+- `' '` → store as "unknown"
+- `'X'` → store as "X", issue warning for non-standard classification
+**Parser Action**: Accept any character, warn if not U/C/S
+
+---
+
+### Edge Case 3: Blank Derivatives and BSTAR
+**Description**: Drag-related fields are blank or zero-filled
+**Required Behavior**: Treat as 0.0; no error.
+**Examples**:
+- First derivative: `'          '` → 0.0
+- Second derivative: `'        '` → 0.0
+- BSTAR: `'        '` → 0.0
+**Parser Action**: Convert blanks to 0.0, no warnings needed
+
+## Numerical Edge Cases
+
+### Edge Case 4: Year Rollover Handling
+**Description**: Two-digit year requires century determination
+**Required Behavior**: Shall apply rollover rule; store 4-digit internally.
+**Examples**:
+- `'00'` → 2000
+- `'25'` → 2025
+- `'57'` → 1957 (Sputnik era)
+- `'99'` → 1999
+**Windowing Rule**: 57-99 → 19XX; 00-56 → 20XX
+**Parser Action**: Apply windowing consistently; document rule choice
+
+---
+
+### Edge Case 5: Day of Year Boundary Values
+**Description**: Fractional day at year boundaries
+**Required Behavior**: Validate against leap year rules; accept boundary values.
+**Examples**:
+- `001.00000000` → Jan 1, 00:00:00 UTC
+- `365.99999999` → Dec 31, 23:59:59 UTC (non-leap year)
+- `366.99999999` → Dec 31, 23:59:59 UTC (leap year)
+- `367.00000000` → Invalid (exceeds year boundary)
+**Parser Action**: Validate day count against leap year status; reject if invalid
+
+---
+
+### Edge Case 6: Extreme Eccentricity Values
+**Description**: Eccentricity near boundary conditions
+**Required Behavior**: Accept [0, 1); reject $\geq 1.0$.
+**Examples**:
+- `0000000` → 0.0 (circular orbit)
+- `9999999` → 0.9999999 (nearly parabolic, but valid)
+- `1000000` → 1.0 (parabolic, INVALID for SGP4)
+**Parser Action**: Reject $e \geq 1.0$ as invalid for SGP4 compatibility
+
+---
+
+### Edge Case 7: High Mean Motion (Low Altitude)
+**Description**: Mean motion indicates very low or suborbital altitude
+**Required Behavior**: Accept; warn if unrealistic.
+**Examples**:
+- `n = 20.0` → altitude ≈ 200 km (very low but possible)
+- `n = 25.0` → altitude $< 200$ km (warn: likely decayed)
+- `n = 50.0` → suborbital (warn: invalid for long-term)
+**Parser Action**: Calculate altitude; warn if $< 150$ km; continue processing
+
+## Checksum Edge Cases
+
+### Edge Case 8: Checksum Failures
+**Description**: Computed checksum doesn't match provided value
+**Required Behavior**: Depends on parsing mode.
+**Example**: Line ends `...8`, but computed checksum is `3`
+
+**Strict Mode**:
+- **Action**: Reject TLE immediately
+- **Error**: "Checksum validation failed on Line X"
+
+**Lenient Mode**:
+- **Action**: Accept TLE with warning
+- **Warning**: "Line X checksum mismatch: expected 3, got 8"
+- **Continue**: Process remaining fields normally
+
+---
+
+### Edge Case 9: Non-Standard Characters in Checksum Range
+**Description**: Unexpected characters in columns 1-68 during checksum calculation
+**Required Behavior**: Apply standard checksum rules; warn if unexpected.
+**Examples**:
+- Letters in numeric fields → contribute 0 to checksum, but flag as invalid
+- Extended ASCII → treat as 0, warn about non-ASCII data
+**Parser Action**: Calculate checksum per specification; validate field contents separately
+
+## Format Variation Edge Cases
+
+### Edge Case 10: Line Length Variations
+**Description**: Lines not exactly 69 characters
+**Required Behavior**: Reject; strict adherence to format.
+**Examples**:
+- 68 characters → Error: "Line too short"
+- 70 characters → Error: "Line too long"
+- Variable length → Error: "Invalid line length"
+**Parser Action**: Validate exact length before field extraction
+
+---
+
+### Edge Case 11: Leading Zeros and Spaces
+**Description**: Inconsistent padding in numeric fields
+**Required Behavior**: Accept; parse numerically.
+**Examples**:
+- Satellite number: `' 1234'` vs `'01234'` → both valid, parse as 1234
+- Mean motion: `'12.34567890'` vs `' 2.34567890'` → parse as written
+**Parser Action**: Extract by column position; convert to appropriate numeric type
+
+---
+
+### Edge Case 12: Sign Handling in Exponential Fields
+**Description**: Missing or ambiguous signs in exponential notation
+**Required Behavior**: Apply standard parsing rules.
+**Examples**:
+- `'+12345-4'` → $+1.2345 \times 10^{-4}$ (explicit positive mantissa)
+- `' 12345-4'` → $+1.2345 \times 10^{-4}$ (implicit positive mantissa)
+- `'-12345+4'` → $-1.2345 \times 10^{+4}$ (negative mantissa, positive exponent)
+- `' 12345 4'` → $+1.2345 \times 10^{+4}$ (implicit positive signs)
+**Parser Action**: Apply implicit positive for missing signs
+
+## Historical and Legacy Data
+
+### Edge Case 13: Very Old TLEs (Pre-2000)
+**Description**: Historical data with different conventions
+**Required Behavior**: Support legacy formats; apply appropriate interpretations.
+**Considerations**:
+- Element set numbers may have different ranges
+- Some satellites may have unusual orbital parameters
+- Year windowing critical for correct epoch interpretation
+**Parser Action**: Same parsing rules; extra validation for historical context
+
+---
+
+### Edge Case 14: Vanguard 1 (Catalog #5)
+**Description**: Extremely old satellite with unique characteristics
+**TLE Example**:
+```
+1 00005U 58002B   21001.00000000  .00000000  00000+0  00000+0 0    18
+2 00005  34.2500 169.1000 1859667 351.9763   3.1374  0.19002085    05
+```
+**Characteristics**:
+- Very low mean motion (high orbit)
+- High eccentricity
+- Small element set number
+**Parser Action**: Parse normally; validate against historical records if available
+
+## Real-World Data Quality Issues
+
+### Edge Case 15: Truncated Precision
+**Description**: Lower precision than expected in some fields
+**Required Behavior**: Accept as provided; don't artificially extend precision.
+**Examples**:
+- Epoch day: `001.123` instead of `001.12345678`
+- Mean motion: `15.123` instead of `15.12345678`
+**Parser Action**: Parse available precision; store with original resolution
+
+---
+
+### Edge Case 16: Institutional Variations
+**Description**: Different TLE sources may have slight format variations
+**Required Behavior**: Support standard format strictly; document deviations.
+**Common Variations**:
+- Different element set numbering schemes
+- Varying precision in derived fields
+- Different classification marking practices
+**Parser Action**: Parse to standard specification; warn about deviations
+
+## Error Recovery and Robustness
+
+### Edge Case 17: Partial TLE Sets
+**Description**: Line 1 available but Line 2 missing, or vice versa
+**Required Behavior**: Reject incomplete TLE; require both lines.
+**Examples**:
+- Only Line 1 provided
+- Line 2 with different satellite number
+- Missing newline between lines
+**Parser Action**: Validate line pairing; reject incomplete sets
+
+---
+
+### Edge Case 18: Mixed Newline Conventions
+**Description**: Files with inconsistent line termination
+**Required Behavior**: Handle gracefully; normalize internally.
+**Examples**:
+- CRLF (Windows) mixed with LF (Unix)
+- Missing final newline
+- Extra blank lines between TLEs
+**Parser Action**: Normalize line endings during input; ignore extra whitespace
+
+## Implementation Guidelines
+
+### Robustness Principles
+1. **Be strict in what you generate**: Always output perfectly formatted TLEs
+2. **Be lenient in what you accept**: Handle real-world variations gracefully
+3. **Provide clear diagnostics**: Detailed error messages with position information
+4. **Maintain traceability**: Preserve original text for verification
+5. **Support both modes**: Strict validation for critical applications, lenient for operational use
+
+### Testing Strategy
+- **Unit tests**: Each edge case with expected behavior
+- **Integration tests**: Real-world TLE datasets
+- **Regression tests**: Historical problem cases
+- **Performance tests**: Large datasets with edge cases
+- **Compliance tests**: Standard test vectors from references
+
+This comprehensive edge case catalog ensures robust TLE parsing implementations that handle the full spectrum of real-world data variations while maintaining compliance with the TLE specification.

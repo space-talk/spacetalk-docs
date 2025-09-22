@@ -1,0 +1,170 @@
+---
+title: TLE Parsing and Validation
+description: Comprehensive rules for parsing and validating Two-Line Element Set data
+outline: deep
+---
+
+# TLE Parsing and Validation
+
+## Parsing Rules
+
+### Fixed-Column Parsing
+- Shall read lines as fixed-column strings (no token split, handle spaces)
+- Handle newlines: CR/LF (DOS) or LF (UNIX); ignore trailing
+- Each line must be exactly 69 characters (excluding newline characters)
+
+### Decimal Handling
+- **Implied decimal**: For eccentricity, insert '.' before digits. For exponent fields: `value = (mantissa / 10^digits) * 10^(signed exponent)`
+- **Explicit decimal**: Parse floating-point numbers with explicit decimal points as-is
+- Example: Eccentricity field '0005770' becomes 0.0005770
+
+### Sign Handling
+- **Leading '+' optional** for positive values; '-' required for negatives
+- **Checksum calculation**: `-` = 1, `+` = 0, space/period = 0, letters = 0 (but letters invalid elsewhere)
+- **Exponent fields**: Sign applies to the exponent, not the mantissa
+
+### Blank and Zero Handling
+- **Blank numeric fields**: Treat as 0.0 with warning
+- **Zero-filled fields**: Accept as valid
+- **Missing data**: Handle gracefully based on field requirements
+
+### Angle Normalization
+- Parse angles as provided in the TLE
+- Normalize to appropriate ranges downstream:
+  - [0,360) for RAAN, argument of perigee, mean anomaly
+  - [0,180] for inclination
+
+## Validation Rules
+
+### Structural Validation
+- **Line length**: Each line exactly 69 characters
+- **Line identifiers**: Line 1 starts with '1', Line 2 starts with '2'
+- **Satellite number matching**: Catalog numbers on both lines must match
+- **Character encoding**: ASCII only
+
+### Checksum Validation
+
+The checksum is computed as follows:
+
+1. **Sum calculation**: For columns 1-68 of each line:
+   - Digits (0-9): Add face value
+   - Minus sign (-): Add 1
+   - Plus sign (+): Add 0
+   - Space, period (.): Add 0
+   - Letters: Add 0 (but letters are invalid in numeric fields)
+
+2. **Modulo operation**: Take sum modulo 10
+3. **Comparison**: Result must equal the digit in column 69
+
+#### Checksum Algorithm Pseudocode
+```
+function checksum(line):
+    sum = 0
+    for each character c in line[0:68]:
+        if c is digit:
+            sum += int(c)
+        elif c == '-':
+            sum += 1
+        # '+', space, period, letters contribute 0
+    return sum % 10
+```
+
+### Field Validation
+
+#### Numeric Range Checks
+- **Inclination**: `0.0 <= i <= 180.0` degrees
+- **Eccentricity**: `0.0 <= e < 1.0` (reject `>= 1.0` or `< 0`)
+- **Mean motion**: Must be positive; flag if unphysically high (`> 20` rev/day)
+- **Epoch day**: `1.0 <= day <= 366.999...` (account for leap years)
+
+#### Derived Validation
+- **Semi-major axis**: Compute from mean motion using WGS-72 constants
+  - `a = (μ / (n × 2π/86400)²)^(1/3)`
+  - μ (WGS-72) = 3.986005e14 m³/s²
+  - Flag if `a <` Earth radius `+ 100` km (indicates decay)
+
+#### Catalog Number Consistency
+- **Cross-line matching**: Satellite catalog number must be identical on both lines
+- **Range**: Currently `1`-`99999`, but prepare for expansion beyond `5` digits
+
+## Validation Modes
+
+### Strict Mode
+- **Reject on any failure**: Checksum errors, range violations, malformed data
+- **Use case**: High-reliability applications where data integrity is critical
+- **Error handling**: Throw exceptions or return error codes immediately
+
+### Lenient Mode (Recommended for Production)
+- **Accept with warnings**: Continue processing despite non-critical errors
+- **Warning categories**:
+  - Checksum mismatches
+  - Minor range violations
+  - Blank or missing optional fields
+  - Unusual but valid values
+- **Use case**: Operational systems processing diverse TLE sources
+
+## Error Categories and Handling
+
+### Critical Errors (Always Reject)
+- Incorrect line length (not 69 characters)
+- Invalid line identifiers ('1' and '2')
+- Satellite catalog number mismatch between lines
+- Malformed numeric data (non-digits in numeric fields)
+- Eccentricity `>= 1.0`
+
+### Warning Conditions (Lenient Mode)
+- Checksum mismatches
+- Missing COSPAR designator
+- Unknown classification codes
+- Unusual ephemeris types (not '0')
+- Extreme orbital parameters (very high/low)
+
+### Informational Notes
+- Non-monotonic element set numbers
+- Large revolution numbers
+- Near-zero drag terms
+
+## Practical Parsing Considerations
+
+### Character Encoding
+- Assume ASCII encoding
+- Handle potential encoding issues gracefully
+- Validate character ranges for numeric fields
+
+### Whitespace Handling
+- Fixed-column format means spaces are significant
+- Leading/trailing spaces in fields have specific meanings
+- Don't strip whitespace before parsing
+
+### Performance Optimization
+- Pre-compile regular expressions for field extraction
+- Use lookup tables for checksum validation
+- Cache computed values (like semi-major axis)
+
+### Memory Management
+- Consider string interning for repeated satellite numbers
+- Efficient storage of parsed TLE structures
+- Minimize memory allocations during parsing
+
+## Implementation Guidelines
+
+### Parser Architecture
+1. **Input validation**: Check line length and structure
+2. **Field extraction**: Use fixed-position slicing
+3. **Type conversion**: Apply appropriate numeric conversions
+4. **Range validation**: Check field-specific constraints
+5. **Consistency checks**: Verify cross-field relationships
+6. **Error reporting**: Provide detailed error messages with positions
+
+### Error Reporting Best Practices
+- Include line numbers and character positions in error messages
+- Provide context about what was expected vs. what was found
+- Suggest corrections for common errors
+- Log warnings in lenient mode for monitoring
+
+### Testing Strategy
+- **Valid cases**: Clean, well-formed TLEs
+- **Edge cases**: Boundary values, unusual but valid data
+- **Error cases**: Various malformed inputs
+- **Real-world data**: Historical TLEs with quirks
+- **Performance tests**: Large batches of TLEs

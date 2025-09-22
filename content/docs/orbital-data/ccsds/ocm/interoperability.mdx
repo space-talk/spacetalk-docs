@@ -1,0 +1,50 @@
+---
+title: Interoperability notes and crosswalks (optional)
+description: Practical guidance for using OCM alongside OPM/OMM/OEM; linking, deployments, and combined NDM packaging
+outline: deep
+---
+
+# Interoperability notes and crosswalks
+
+## OCM vs. OPM/OMM/OEM
+
+- OPM: single Cartesian state (optionally with simple maneuvers). OCM can represent the same as a single CARTP(V) trajectory line and a MAN block.
+- OMM: mean elements (TLE-style). OCM can carry mean elements via a trajectory block with TRAJ_TYPE set to the appropriate mean‑element set and ORB_AVERAGING specified. Do not use TEME in OCM; keep TLE/TEME exchanges in OMM.
+- OEM: tabular ephemerides for interpolation. OCM trajectory blocks can substitute OEM for ephemeris delivery and also embed maneuvers, covariances, and model disclosures.
+
+## Linking related messages
+
+- Use PREVIOUS_MESSAGE_ID/NEXT_MESSAGE_ID (and epochs) to chain OCMs by originator/object.
+- Cross-message links:
+  - ADM_MSG_LINK for attitude,
+  - CDM_MSG_LINK for conjunctions,
+  - PRM_MSG_LINK for pointing requests,
+  - RDM_MSG_LINK for reentry,
+  - TDM_MSG_LINK for observations underpinning OD.
+
+## Parent/child deployments
+
+- Use a MAN block with MAN_DEVICE_ID = DEPLOY and the deployment composition to:
+  - assign child IDs (DEPLOY_ID),
+  - specify child ΔV in MAN_REF_FRAME,
+  - decrement host mass (DEPLOY_MASS ≤ 0),
+  - specify DEPLOY_DV_RATIO (host response; typically ≤ 0).
+- Represent the children's subsequent trajectories in their own OCMs (or in a higher-level product), referencing the deployment time and child IDs.
+
+## Combined NDM bundling
+
+- Use the `<ndm>` root (NDM/XML) to package multiple ODMs (OPM/OMM/OEM/OCM) together, e.g., multi-object predicts or "with‑burn/no‑burn" alternatives.
+- Keep each message's header/body self-contained; the NDM's only required attributes on child messages are `id` and `version`.
+
+## Enumerations and registries
+
+- Prefer SANA registries for organizations, centers, frames, element sets, and covariance types.
+- Register new values through the SANA process when needed; until registered, values may be used by mutual agreement but should be documented in an ICD.
+
+## Common pitfalls and remedies
+
+- TEME usage: restrict to OMM (TLE workflows). For OCM, use ICRF/ICRF3, EME2000/J2000, or appropriate orbit-relative/earth-fixed frames.
+- Mixed absolute/relative times in a block: disallow; split into separate blocks.
+- Incomplete duty-cycle definitions: ensure required DC_* keys are present based on DC_TYPE.
+- Covariance PSD: verify and, if necessary, regularize before publication.
+- Units inline: avoid on multipartite lines; use *_UNITS fields or XML attributes on scalars.

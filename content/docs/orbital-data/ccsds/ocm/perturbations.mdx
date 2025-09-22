@@ -1,0 +1,67 @@
+---
+title: Perturbations Specification
+description: Full field dictionary for OCM Perturbations Specification (CCSDS 502.0-B-3, §6.2.9; Table 6‑10)
+outline: deep
+---
+
+
+# Perturbations Specification
+
+## Purpose and scope
+This optional block declares the force‑model settings, sources, and fixed indices used to create trajectory and/or covariance content in the OCM. It enables receivers to reproduce propagation assumptions. At most one PERT block may appear in an OCM.
+
+## Block keywords and order
+Delimited by:
+- PERT_START (line by itself)
+- PERT_STOP (line by itself)
+
+Within the block, KVN keys shall appear in the fixed order below.
+
+## Fields
+
+| Field | Req | Type | Format/Enum | Units | Default | Description | Example | Notes |
+|-------|-----|------|-------------|-------|---------|-------------|---------|-------|
+| PERT_START | Mandatory | delimiter | literal | n/a | n/a | Start of the perturbations section. | PERT_START |  |
+| COMMENT | Optional | text | comment | n/a | None | Comments immediately after PERT_START. | COMMENT Perturbations used for propagation |  |
+| ATMOSPHERIC_MODEL | Optional | enum | /refs/enums-formats-units#atmosphere-models | n/a | None | Atmosphere density model. | NRLMSIS00 |  |
+| GRAVITY_MODEL | Optional | text | name + `\d{2}D : \d{2}O` | n/a | None | Gravity model name with degree/order used. | EGM-96: 36D 36O | "8D 0O" denotes zonals through J8. |
+| EQUATORIAL_RADIUS | Optional | real | scalar | km | None | Equatorial radius used (if different from gravity model). | 6378.137 |  |
+| GM | Optional | real | scalar | km**3/s**2 | None | Body GM used (if different from gravity model). | 3.986004e5 |  |
+| N_BODY_PERTURBATIONS | Optional | list | centers list | n/a | None | Third-body perturbers (comma‑delimited). | MOON, SUN, JUPITER | Use values from SANA orbit centers. |
+| CENTRAL_BODY_ROTATION | Optional | real | scalar | deg/s | None | Central body rotation rate about major principal axis. | 4.17807421629e-3 |  |
+| OBLATE_FLATTENING | Optional | real | scalar | n/a | None | Oblateness (e.g., ~1/298.257223563 for Earth). | 0.00335281066475 |  |
+| OCEAN_TIDES_MODEL | Optional | text | free text | n/a | None | Ocean tides model (optionally note constituents). | DIURNAL | Informative. |
+| SOLID_TIDES_MODEL | Optional | text | free text | n/a | None | Solid tides model (optionally note constituents). | SEMI-DIURNAL | Informative. |
+| REDUCTION_THEORY | Optional | text | free text | n/a | None | Precession/nutation reduction theory. | IAU2010 |  |
+| ALBEDO_MODEL | Optional | text | free text | n/a | None | Earth albedo model. | STK |  |
+| ALBEDO_GRID_SIZE | Optional | integer | scalar | n/a | None | Number of grid points for albedo model. | 100 |  |
+| SHADOW_MODEL | Optional | enum | NONE, CYLINDRICAL, CONE, DUAL_CONE | n/a | None | SRP shadowing model. | DUAL_CONE |  |
+| SHADOW_BODIES | Optional | list | centers list | n/a | None | Bodies casting SRP shadow. | EARTH, MOON |  |
+| SRP_MODEL | Optional | text | free text | n/a | None | SRP target model (e.g., BOX_WING, CANNONBALL). | BOX_WING |  |
+| SW_DATA_SOURCE | Optional | text | free text | n/a | None | Source/version of space‑weather data. | CELESTRAK |  |
+| SW_DATA_EPOCH | Optional | time | CCSDS A/B | n/a | None | Epoch of the space‑weather data set. | 2001-11-08T00:00:00Z |  |
+| SW_INTERP_METHOD | Optional | text | free text (e.g., PRECEDING_VALUE, LINEAR, LAGRANGE_ORDER_5) | n/a | None | Interpolation/selection method for space‑weather series. | PRECEDING_VALUE |  |
+| FIXED_GEOMAG_KP | Optional | real | scalar | nT | None | Fixed Kp used (overrides time‑varying series). | 3.2 | Units per standard table. |
+| FIXED_GEOMAG_AP | Optional | real | scalar | nT | None | Fixed ap index used. | 21 |  |
+| FIXED_GEOMAG_DST | Optional | real | scalar | nT | None | Fixed Dst used. | -20 |  |
+| FIXED_F10P7 | Optional | real | scalar | SFU | None | Fixed daily F10.7 solar flux proxy. | 120.0 |  |
+| FIXED_F10P7_MEAN | Optional | real | scalar | SFU | None | Fixed 81‑day running mean of F10.7. | 132.0 |  |
+| FIXED_M10P7 | Optional | real | scalar | SFU | None | Fixed daily M10.7 proxy. | 120.0 |  |
+| FIXED_M10P7_MEAN | Optional | real | scalar | SFU | None | Fixed 81‑day mean M10.7. | 120.0 |  |
+| FIXED_S10P7 | Optional | real | scalar | SFU | None | Fixed daily S10.7 proxy. | 120.0 |  |
+| FIXED_S10P7_MEAN | Optional | real | scalar | SFU | None | Fixed 81‑day mean S10.7. | 120.0 |  |
+| FIXED_Y10P7 | Optional | real | scalar | SFU | None | Fixed daily Y10.7 proxy. | 120.0 |  |
+| FIXED_Y10P7_MEAN | Optional | real | scalar | SFU | None | Fixed 81‑day mean Y10.7. | 120.0 |  |
+| PERT_STOP | Mandatory | delimiter | literal | n/a | n/a | End of perturbations section. | PERT_STOP |  |
+
+## Validation and constraints
+
+- Only one PERT block per OCM.
+- GRAVITY_MODEL should include explicit degree/order if not intrinsic to the model name.
+- If GM and/or EQUATORIAL_RADIUS override the model's values, ensure consistency across propagation and OD sections.
+- Values listed as "fixed" override time‑varying inputs from SW_DATA_SOURCE; define precedence and usage in an ICD if ambiguity remains.
+
+## Cross-references
+
+- Atmosphere and gravity enumerations → /refs/enums-formats-units
+- Trajectory and covariance sections that rely on these model settings → /ocm/structure

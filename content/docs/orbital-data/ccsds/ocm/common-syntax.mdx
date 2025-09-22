@@ -1,0 +1,103 @@
+---
+title: Common syntax and formats
+description: KVN rules, numeric and time formats, vectors, units, comment placement, and validation for OCM (CCSDS 502.0-B-3)
+outline: deep
+---
+
+# Common syntax and formats
+
+This page summarizes syntax and parsing rules used across OCM files (KVN form) per CCSDS 502.0-B-3 section 7, with OCM-specific clarifications from section 6.
+
+## Lines, characters, and termination
+
+- Line types: header, metadata, data, comment, or blank.
+- Allowed characters: printable ASCII and blanks only. No control characters (e.g., TAB), except line terminators.
+- Line termination: CR, LF, CRLF, or LFCR (single sequence).
+- Line length: OCM lines may be arbitrarily long (agree on limits if needed).
+
+## KVN (Key = Value Notation)
+
+- Form: `KEY = VALUE`
+  - KEY: uppercase alphanumeric and underscores; no embedded spaces.
+  - `=`: single equals character.
+  - VALUE: scalar text/number, or a space-delimited vector (no commas).
+- One assignment per line.
+- Whitespace around key, equals, or end-of-line is not significant.
+- Order matters: follow the key order published by the standard for each section.
+
+Exceptions to KVN
+- Section delimiters and comments are not KVN:
+  - `*_START` / `*_STOP` lines (e.g., META_START, TRAJ_START, COV_STOP, MAN_STOP, PERT_START, OD_STOP).
+  - `COMMENT` lines.
+- Multipartite data lines (trajectory, covariance, maneuver) are not KVN. They begin with a time tag followed by space-separated values in a fixed order defined by the section's metadata.
+
+## Numberic values
+
+- Integers: optional sign, decimal digits; 32-bit signed range −2,147,483,648 to +2,147,483,647.
+- Non-integer numbers:
+  - Fixed-point: digits with one decimal point; optional sign.
+  - Scientific notation: sign, mantissa with a single decimal point in second character position, `E` or `e`, signed exponent.
+- Significant digits: up to 16 for mantissas.
+- No embedded blanks in numeric values.
+- Use SI units as specified by the standard; see "Units" below.
+
+## Time values
+
+- Absolute times use CCSDS Time Code Format A or B in UTC unless the section defines another system:
+  - Format A: `YYYY-DDDThh:mm:ss[.fff]Z` (day of year, leap seconds permitted with `ss=60`).
+  - Format B: `YYYY-MM-DDThh:mm:ss[.fff]Z` (calendar date).
+- CREATION_DATE is always UTC.
+- Relative times are seconds (real numbers) measured from `EPOCH_TZERO` (defined in metadata).
+- Within any given OCM data block, do not mix absolute and relative times.
+
+Recommended regex examples (from Annex F)
+- Time string (Format A with optional fractional seconds): `^(\d{4})-(\d{3})T(\d{2}):(\d{2}):(\d{2})(\.\d{1,3})?Z$`
+- Use programmatic validation appropriate to your language and performance needs.
+
+## Vector encoding and arrays
+
+- Represented as space-delimited sequences on the same line after the keyword or time tag.
+- No commas or brackets in the value string (except where units are documented separately by *_UNITS fields).
+- Dimension is defined by the field's specification (e.g., three components for a vector).
+
+## Units
+
+- OCM data lines (trajectory, covariance, maneuver) shall not embed unit strings inline.
+- Use these informational unit keywords when desired:
+  - TRAJ_UNITS for trajectory lines,
+  - COV_UNITS for covariance lines,
+  - MAN_UNITS for maneuver lines.
+- For other KVN scalar values, units may be optionally shown after the value in square brackets for documentation (e.g., `WET_MASS = 472.3 [kg]`). This does not apply to multipartite data lines.
+
+## Comments
+
+- All comment lines start with the keyword `COMMENT`, one per line. The remainder of the line is free text.
+- Placement (OCM):
+  - Header: immediately after `CCSDS_OCM_VERS`.
+  - Metadata: immediately after `META_START`.
+  - Data blocks: immediately after `*_START` lines of TRAJ, COV, MAN, PERT, and OD sections.
+- Comments must not appear inside a contiguous block of trajectory, covariance, or maneuver data lines.
+
+## OCM-wide timing and consistency rules
+
+- TIME_SYSTEM is mandatory in metadata and governs all absolute times except CREATION_DATE (UTC).
+- EPOCH_TZERO is mandatory and anchors relative times.
+- Within any one block:
+  - use absolute or relative times consistently,
+  - no duplicate timetags,
+  - time-ordered, monotonically increasing series are required for trajectory and covariance time histories.
+- For SCLK time system: supply SCLK_OFFSET_AT_EPOCH and SCLK_SEC_PER_SI_SEC; EPOCH_TZERO is interpreted in UTC for SCLK use.
+
+## Validation approach
+
+- Validate three layers:
+  1) Structure and order: header → metadata → zero or more data sections in the order defined by the standard; required start/stop delimiters present.
+  2) Syntax: KVN compliance, allowed characters, numeric/time formats, comment placement.
+  3) Semantics: time rules above; covariance positive semi-definiteness; element counts vs. ordering type; enumerations per SANA registries; frame epochs where required.
+- Regular expressions from Annex F are useful for KVN ingestion (keys, numeric values, optional units, time strings). For long multipartite series, prefer streaming tokenization for efficiency.
+
+## Special notes
+
+- Do not use TEME frames in OCM except where explicitly allowed by the standard (TEME is reserved for OMM/TLE workflows).
+- Use only SANA-registered values for time systems, centers, reference frames, element types, and covariance types.
+- Numeric precision: keep to 16 significant digits to avoid under/overflow and maintain consistency across implementations.
